@@ -164,6 +164,9 @@ function navigate() {
   if (page === 'ranks' && !ranksInitialized) {
     initRanks();
   }
+  if (page === 'prices') {
+    positionPriceTabPill();  // page is now visible — pill can measure the active tab
+  }
 }
 
 window.addEventListener('hashchange', navigate);
@@ -400,8 +403,27 @@ function setPriceTab(tab, el) {
   priceTabCategory = tab;
   document.querySelectorAll('#page-prices .tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  positionPriceTabPill();
   renderTableFiltered();
 }
+
+// Slide + resize the price-tab pill to hug the active tab. Must run while the
+// prices page is visible (offsetWidth is 0 when hidden). The first call sizes
+// the pill instantly; subsequent calls animate (see .tabs.pill-ready in CSS).
+function positionPriceTabPill() {
+  const tabs = document.querySelector('#page-prices .tabs');
+  if (!tabs) return;
+  const active = tabs.querySelector('.tab.active');
+  if (!active || !active.offsetWidth) return;  // hidden / not laid out yet
+  tabs.style.setProperty('--pill-x', active.offsetLeft + 'px');
+  tabs.style.setProperty('--pill-w', active.offsetWidth + 'px');
+  if (!tabs.classList.contains('pill-ready')) {
+    requestAnimationFrame(() => tabs.classList.add('pill-ready'));
+  }
+}
+
+window.addEventListener('resize', positionPriceTabPill);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(positionPriceTabPill);
 
 function filterTable() { renderTableFiltered(); }
 function reloadTable() { loadCrops(); }

@@ -240,14 +240,13 @@ main {
 }
 
 /* ── Category filter tabs (inside price card) ── */
-/* Same sliding-thumb language as the sushi toggle: a single pill glides
-   between the 4 equal segments. Pure CSS via :has() — translateX in 25%
-   steps — so it works even while the page is hidden (no measurement). */
+/* A single pill hugs the active tab. Tabs are sized to their own label so the
+   control stays tidy and compact (no dead space around short labels); JS
+   measures the active tab and drives --pill-x / --pill-w, so the pill slides
+   AND resizes to fit each label. See positionPriceTabPill() in app.js. */
 .tabs {
   position: relative;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
+  display: inline-flex;
   width: fit-content;
   background: rgba(0,0,0,0.22);
   border: 1px solid rgba(255,255,255,0.07);
@@ -259,28 +258,24 @@ main {
   position: absolute;
   top: 3px;
   bottom: 3px;
-  left: 3px;
-  width: calc(25% - 1.5px);
+  left: 0;
+  width: var(--pill-w, 0px);
+  transform: translateX(var(--pill-x, 3px));
   border-radius: 6px;
   background: linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
   border: 1px solid rgba(255,255,255,0.14);
   box-shadow: 0 1px 0 rgba(255,255,255,0.16) inset, 0 2px 8px rgba(0,0,0,0.3);
-  transition: transform 280ms var(--ease-out);
   pointer-events: none;
   z-index: 0;
 }
-.tabs:has(> .tab:nth-child(2).active)::before { transform: translateX(100%); }
-.tabs:has(> .tab:nth-child(3).active)::before { transform: translateX(200%); }
-.tabs:has(> .tab:nth-child(4).active)::before { transform: translateX(300%); }
+/* Animate only after JS has positioned the pill once (no grow-in flash). */
+.tabs.pill-ready::before {
+  transition: transform 280ms var(--ease-out), width 280ms var(--ease-out);
+}
 .tab {
   position: relative;
   z-index: 1;
-  /* Equal-width segments so the 25%-step sliding pill lines up under every
-     label. content-box keeps min-width independent of the 14px padding;
-     72px comfortably fits the widest label ("Processed"). */
-  box-sizing: content-box;
-  min-width: 72px;
-  padding: 5px 14px;
+  padding: 6px 18px;
   border: none;
   background: transparent;
   color: var(--muted);
