@@ -67,17 +67,17 @@ const UNLOCK_BENEFITS = [
   { icon: '🔐', text: 'Your data, tied to your Discord' },
 ];
 
-let _unlockPanelVisible = false;
-
+// Show the login gate for a gated page. Each gated page gets its OWN panel
+// (vote and prestige are independent), and the page's real markup is hidden —
+// never destroyed — so it renders correctly the moment the gate is dismissed.
 function showUnlockPanel(page) {
-  if (_unlockPanelVisible) return;
-  _unlockPanelVisible = true;
   const pageEl = document.getElementById('page-' + page);
   if (!pageEl) return;
+  // Already gated? Don't stack a second panel on this page.
+  if (pageEl.querySelector(':scope > .unlock-panel')) return;
   const label = page === 'vote' ? 'Vote Tracking' : 'Prestige Progress';
   const panel = document.createElement('div');
   panel.className = 'unlock-panel';
-  panel.id = 'unlock-panel';
   panel.innerHTML = `
     <div class="unlock-card">
       <div class="unlock-lock">🔒</div>
@@ -94,14 +94,14 @@ function showUnlockPanel(page) {
       </a>
       <button class="unlock-guest-link" onclick="dismissUnlockPanel(); location.hash='#home';">Continue as guest</button>
     </div>`;
-  pageEl.innerHTML = '';
+  // Hide the real content (don't wipe it) so it can be restored on dismiss.
+  Array.from(pageEl.children).forEach(el => el.classList.add('gated-hidden'));
   pageEl.appendChild(panel);
 }
 
 function dismissUnlockPanel() {
-  _unlockPanelVisible = false;
-  const panel = document.getElementById('unlock-panel');
-  if (panel) panel.remove();
+  document.querySelectorAll('.unlock-panel').forEach(p => p.remove());
+  document.querySelectorAll('.gated-hidden').forEach(el => el.classList.remove('gated-hidden'));
 }
 
 const _FIRST_VISIT_KEY = 'mclabs_seen_locked_tabs';

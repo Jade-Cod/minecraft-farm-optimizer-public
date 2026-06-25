@@ -38,7 +38,7 @@ oauth.register(
 )
 
 ACCESS_TOKEN_EXPIRE  = 3600         # 1 hour
-REFRESH_TOKEN_EXPIRE = 7 * 86400    # 7 days
+REFRESH_TOKEN_EXPIRE = 30 * 86400   # 30 days (rolling — slides forward on activity)
 _SECURE = os.environ.get("SECURE_COOKIES", "true").lower() not in ("0", "false", "no")
 COOKIE_OPTS = dict(httponly=True, samesite="lax", secure=_SECURE)
 

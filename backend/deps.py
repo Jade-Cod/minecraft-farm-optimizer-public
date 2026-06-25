@@ -22,14 +22,24 @@ def _get_user_by_id(user_id: int) -> Optional[dict]:
     return dict(row)
 
 
-def get_current_user(request: Request) -> Optional[dict]:
-    token = request.cookies.get("access_token")
+def _user_id_from_token(token: Optional[str]) -> Optional[int]:
     if not token:
         return None
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id = int(payload["sub"])
+        return int(payload["sub"])
     except (JWTError, KeyError, ValueError):
+        return None
+
+
+def get_current_user(request: Request) -> Optional[dict]:
+    # Prefer the short-lived access token; if it's missing or expired, fall back
+    # to the longer-lived refresh token so the session survives past the access
+    # token's lifetime (the rolling-session middleware re-mints both cookies).
+    user_id = _user_id_from_token(request.cookies.get("access_token"))
+    if user_id is None:
+        user_id = _user_id_from_token(request.cookies.get("refresh_token"))
+    if user_id is None:
         return None
     return _get_user_by_id(user_id)
 

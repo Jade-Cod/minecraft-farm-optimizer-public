@@ -207,6 +207,10 @@ main {
 .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 6px; }
 .stat-value { font-family: var(--font-mono); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.4px; }
 .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+/* Home stat cards: keep the compound icon vertically centred with its name so
+   the four cards' icons line up on a consistent baseline. */
+.stats-row .stat-value { display: flex; align-items: center; gap: 6px; }
+.stats-row .stat-value .table-icon { margin-right: 0; flex-shrink: 0; }
 
 /* ── Card ── */
 .card {
@@ -271,6 +275,11 @@ main {
 .tab {
   position: relative;
   z-index: 1;
+  /* Equal-width segments so the 25%-step sliding pill lines up under every
+     label. content-box keeps min-width independent of the 14px padding;
+     72px comfortably fits the widest label ("Processed"). */
+  box-sizing: content-box;
+  min-width: 72px;
   padding: 5px 14px;
   border: none;
   background: transparent;
@@ -2372,6 +2381,8 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
 .logout-btn:hover { border-color: var(--text); color: var(--text); }
 
 /* ── Unlock panel — replaces gated page content for guests ── */
+/* Real page content hidden (not destroyed) while the unlock gate is shown. */
+.gated-hidden { display: none !important; }
 .unlock-panel {
   flex: 1;
   display: flex;

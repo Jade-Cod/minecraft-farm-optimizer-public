@@ -24,7 +24,9 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.sessions import SessionMiddleware
 
-from deps import get_current_user, require_user
+from jose import jwt, JWTError
+
+from deps import get_current_user, require_user, JWT_SECRET, JWT_ALGORITHM
 import auth as auth_module
 
 app = FastAPI(title="MCLabs Tools")
@@ -57,6 +59,40 @@ async def limit_body_size(request: Request, call_next):
         if cl and int(cl) > _MAX_BODY:
             return JSONResponse(status_code=413, content={"detail": "Request body too large"})
     return await call_next(request)
+
+
+def _token_valid(token: Optional[str]) -> bool:
+    if not token:
+        return False
+    try:
+        jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return True
+    except JWTError:
+        return False
+
+
+@app.middleware("http")
+async def rolling_session(request: Request, call_next):
+    """Keep logged-in users logged in: when the short-lived access token has
+    expired but the refresh token is still valid, mint a fresh access token for
+    this request and re-issue both cookies on the way out (sliding expiration),
+    so active users never get silently logged out."""
+    reissue_uid = None
+    if not _token_valid(request.cookies.get("access_token")):
+        refresh = request.cookies.get("refresh_token")
+        if _token_valid(refresh):
+            try:
+                reissue_uid = int(jwt.decode(refresh, JWT_SECRET, algorithms=[JWT_ALGORITHM])["sub"])
+                # Make the new access token visible to this request's handlers.
+                request.cookies["access_token"] = auth_module._make_jwt(
+                    reissue_uid, auth_module.ACCESS_TOKEN_EXPIRE)
+            except (JWTError, KeyError, ValueError):
+                reissue_uid = None
+
+    response = await call_next(request)
+    if reissue_uid is not None:
+        auth_module._set_auth_cookies(response, reissue_uid)
+    return response
 
 app.include_router(auth_module.router, prefix="/auth")
 
