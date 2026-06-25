@@ -16,6 +16,9 @@ backend/data/
 # OS
 .DS_Store
 
+# Deployment docs (contain server/domain specifics)
+DEPLOY-VPS.md
+
 # Local tooling
 .claude/
 .agents/
