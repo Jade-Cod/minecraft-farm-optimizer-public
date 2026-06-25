@@ -92,7 +92,7 @@ function showUnlockPanel(page) {
       <a href="/auth/discord/login" class="unlock-discord-btn">
         ${DISCORD_SVG} Login with Discord
       </a>
-      <button class="unlock-guest-link" onclick="dismissUnlockPanel()">Continue as guest</button>
+      <button class="unlock-guest-link" onclick="dismissUnlockPanel(); location.hash='#home';">Continue as guest</button>
     </div>`;
   pageEl.innerHTML = '';
   pageEl.appendChild(panel);
@@ -102,7 +102,6 @@ function dismissUnlockPanel() {
   _unlockPanelVisible = false;
   const panel = document.getElementById('unlock-panel');
   if (panel) panel.remove();
-  location.hash = '#home';
 }
 
 const _FIRST_VISIT_KEY = 'mclabs_seen_locked_tabs';
@@ -214,27 +213,34 @@ function renderTableFiltered() {
   renderTable(display);
 }
 
+function _statIcon(c) {
+  return c.icon
+    ? `<img src="/static/icons/${c.icon}?v=tp1" class="table-icon" alt="${c.minecraft_name || ''}" />`
+    : `<span class="compound-emoji">${c.emoji}</span>`;
+}
+
 async function loadTopStats() {
   try {
     const res = await apiFetch(`${API}/api/crops/top`);
     const data = await res.json();
 
-    document.getElementById('stat-best-name').textContent = data.best_price.emoji + ' ' + data.best_price.name;
+    document.getElementById('stat-best-name').innerHTML  = _statIcon(data.best_price) + ' ' + data.best_price.name;
     document.getElementById('stat-best-price').textContent = '$' + data.best_price.current_price.toFixed(2) + ' per unit';
 
-    document.getElementById('stat-dph-name').textContent = data.best_base_dph.emoji + ' ' + data.best_base_dph.name;
+    document.getElementById('stat-dph-name').innerHTML  = _statIcon(data.best_base_dph) + ' ' + data.best_base_dph.name;
     document.getElementById('stat-dph-val').textContent = '$' + data.best_base_dph.dph.toFixed(2) + '/hr per plant';
 
     if (data.best_craft_profit) {
       const p = data.best_craft_profit;
-      document.getElementById('stat-profit-name').textContent = p.emoji + ' ' + p.name;
+      document.getElementById('stat-profit-name').innerHTML  = _statIcon(p) + ' ' + p.name;
       document.getElementById('stat-profit-val').textContent =
         '+$' + p.craft_profit.toFixed(2) + ' per craft (' + p.output_qty + 'x out)';
     }
 
     if (data.trending_up[0]) {
-      document.getElementById('stat-up').textContent = data.trending_up[0].emoji + ' ' + data.trending_up[0].name;
-      document.getElementById('stat-up-pct').textContent = '+' + data.trending_up[0].change_pct + '% this week';
+      const t = data.trending_up[0];
+      document.getElementById('stat-up').innerHTML  = _statIcon(t) + ' ' + t.name;
+      document.getElementById('stat-up-pct').textContent = '+' + t.change_pct + '% this week';
     }
   } catch (_) {}
 }
