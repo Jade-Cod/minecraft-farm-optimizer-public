@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets — never commit
+.env
+deploy/.env
+
+# Database & runtime data — lives on the server, never in git
+backend/data/
+*.db
+*.db-bak*
+
+# OS
+.DS_Store
+
+# Local tooling
+.claude/
+.agents/
+.codex/
+.impeccable/
+ranks.test.js

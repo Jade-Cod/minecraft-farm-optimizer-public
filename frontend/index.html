@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#252426" />
+  <title>MCLabs Tools</title>
+  <link rel="icon" href="https://labs-mc.com/data/assets/logo/mclabsc.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="/static/style.css?v=48" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo"><img src="https://labs-mc.com/data/assets/logo/mclabsc.png" alt="MCLabs" class="logo-img" /> MCLabs Tools</div>
+      <nav class="nav-tabs">
+        <a class="nav-tab" href="#home">Home</a>
+        <a class="nav-tab" href="#prices">Prices</a>
+        <a class="nav-tab" href="#calculator">Calculator</a>
+        <a class="nav-tab" href="#ranks">Ranks</a>
+        <a class="nav-tab" href="#graphs">Graphs</a>
+        <a class="nav-tab" data-gated="true" href="#prestige">Prestige</a>
+        <a class="nav-tab" href="#sushi">Sushi</a>
+        <a class="nav-tab" data-gated="true" href="#vote">Vote</a>
+      </nav>
+      <div class="header-actions">
+        <div id="user-menu" class="user-menu hidden">
+          <img class="user-avatar" id="user-avatar" alt="avatar" />
+          <span class="user-name" id="user-name"></span>
+          <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+        <button id="auth-btn" class="auth-btn" onclick="window.location.href='/auth/discord/login'">Login with Discord</button>
+        <span id="sync-status" class="sync-status"></span>
+        <button id="sync-btn" class="btn btn-secondary" onclick="syncPrices()"><span class="sync-icon" id="sync-icon">&#8635;</span><span id="sync-label">Sync Prices</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ===== HOME PAGE ===== -->
+    <div id="page-home" class="page">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Best Sell Price</div>
+          <div class="stat-value" id="stat-best-name">&#8212;</div>
+          <div class="stat-sub" id="stat-best-price">&#8212;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Best Base $/hr</div>
+          <div class="stat-value" id="stat-dph-name">&#8212;</div>
+          <div class="stat-sub" id="stat-dph-val">&#8212;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Best Craft Profit</div>
+          <div class="stat-value" id="stat-profit-name">&#8212;</div>
+          <div class="stat-sub" id="stat-profit-val">&#8212;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Trending Up</div>
+          <div class="stat-value" id="stat-up">&#8212;</div>
+          <div class="stat-sub" id="stat-up-pct">&#8212;</div>
+        </div>
+      </div>
+
+      <div class="home-tables">
+        <section class="card">
+          <div class="card-header"><h2>&#128200; Top 5 by Price</h2></div>
+          <div class="table-wrap">
+            <table id="home-top-price-table">
+              <thead>
+                <tr><th>#</th><th>Compound</th><th>Price</th><th>Change</th></tr>
+              </thead>
+              <tbody id="home-top-price-body">
+                <tr><td colspan="4" class="skel-cell"><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header"><h2>&#127942; Top 5 Craft Profits</h2></div>
+          <div class="table-wrap">
+            <table id="home-top-craft-table">
+              <thead>
+                <tr><th>#</th><th>Compound</th><th>Recipe</th><th>Profit</th></tr>
+              </thead>
+              <tbody id="home-top-craft-body">
+                <tr><td colspan="4" class="skel-cell"><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ===== PRICES PAGE ===== -->
+    <div id="page-prices" class="page">
+      <section class="card">
+        <div class="card-header">
+          <div class="tabs">
+            <button class="tab active" onclick="setPriceTab('all', this)">All</button>
+            <button class="tab" onclick="setPriceTab('base', this)">Base</button>
+            <button class="tab" onclick="setPriceTab('processed', this)">Processed</button>
+            <button class="tab" onclick="setPriceTab('combo', this)">Combos</button>
+          </div>
+          <div class="table-controls">
+            <input type="text" id="search" placeholder="Search compound..." oninput="filterTable()" />
+            <select id="sort-select" onchange="reloadTable()">
+              <option value="price">Sort: Price</option>
+              <option value="profit">Sort: Craft Profit</option>
+              <option value="change">Sort: % Change</option>
+              <option value="dph">Sort: $/hr</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="price-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Compound</th>
+                <th>Recipe</th>
+                <th>Out</th>
+                <th>Price</th>
+                <th>Change</th>
+                <th>%</th>
+                <th>$/hr</th>
+                <th>Craft +/-</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="9" class="skel-cell"><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="footnote">$/hr = per plant, raw crops only (vanilla grow times) &nbsp;|&nbsp; Craft +/- = net profit per craft vs selling ingredients raw</p>
+      </section>
+    </div>
+
+    <!-- ===== CALCULATOR PAGE ===== -->
+    <div id="page-calculator" class="page">
+      <div class="prestige-header">
+        <h2>💰 Revenue Calculator</h2>
+        <p class="prestige-intro">Build your sell list, set how many double chests you're selling, and see your total earnings with boosters applied. 1 DC = 3,456 items.</p>
+      </div>
+
+      <!-- Boosters + demand -->
+      <section class="card dash-booster-card">
+        <div class="dash-booster-row">
+          <button class="dash-booster-btn" id="server-booster-btn" onclick="toggleServerBooster()">
+            <span class="dash-booster-icon">⚡</span>
+            <div class="dash-booster-text">
+              <span class="dash-booster-name">Server 2× Booster</span>
+              <span class="dash-booster-desc">Doubles all sell prices · no prestige effect</span>
+            </div>
+            <span class="dash-booster-pill" id="server-booster-pill">OFF</span>
+          </button>
+          <button class="dash-booster-btn" id="personal-booster-btn" onclick="togglePersonalBooster()">
+            <span class="dash-booster-icon">✨</span>
+            <div class="dash-booster-text">
+              <span class="dash-booster-name">Personal +10% Booster</span>
+              <span class="dash-booster-desc">+10% to all sell prices · no prestige effect</span>
+            </div>
+            <span class="dash-booster-pill" id="personal-booster-pill">OFF</span>
+          </button>
+          <div class="dash-mult-display">
+            <span class="dash-mult-label">Booster mult</span>
+            <span class="dash-mult-val" id="dash-mult-val">1.00×</span>
+          </div>
+        </div>
+        <div class="dash-demand-row">
+          <span class="dash-demand-label">Dealer Rates</span>
+          <label class="dash-demand-field">
+            <span class="dash-demand-name">Dealer</span>
+            <button type="button" id="dash-dealer" class="ui-select dash-dealer-select"
+              aria-haspopup="listbox" aria-expanded="false" aria-label="Dealer" data-onpick="setDealer">
+              <span class="ui-select-text">Custom / from /rates</span>
+              <svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </label>
+          <label class="dash-demand-field">
+            <span class="dash-demand-name">Sell</span>
+            <input type="number" id="dash-demand-price" min="0.5" max="2.0" step="0.01"
+              value="1.00" class="dash-demand-input"
+              onchange="setDemand('price', this.value)" />
+            <span class="dash-demand-x">×</span>
+          </label>
+          <label class="dash-demand-field">
+            <span class="dash-demand-name">Prestige</span>
+            <input type="number" id="dash-demand-prestige" min="0.5" max="2.0" step="0.01"
+              value="1.00" class="dash-demand-input"
+              onchange="setDemand('prestige', this.value)" />
+            <span class="dash-demand-x">×</span>
+          </label>
+          <label class="dash-demand-field">
+            <span class="dash-demand-name">Score</span>
+            <input type="number" id="dash-demand-score" min="0.5" max="2.0" step="0.01"
+              value="1.00" class="dash-demand-input"
+              onchange="setDemand('score', this.value)" />
+            <span class="dash-demand-x">×</span>
+          </label>
+          <span class="dash-demand-hint">Pick a dealer or type live <code>/rates</code> · 0.50 – 2.00 · Sell applies before boosters</span>
+        </div>
+      </section>
+
+      <!-- Add item -->
+      <div class="dash-add-bar">
+        <div id="dash-item-select" class="dash-combo"></div>
+        <button class="btn btn-primary" onclick="dashAddItem()">+ Add</button>
+      </div>
+
+      <!-- Item cards -->
+      <div id="dash-items"></div>
+
+      <!-- Grand total -->
+      <section class="card dash-total-panel" id="dash-total-panel" style="display:none">
+        <div class="dash-total-row">
+          <div class="dash-total-block">
+            <span class="dash-total-label">Gross Revenue</span>
+            <span class="dash-total-val" id="dash-total-val">$0</span>
+          </div>
+          <div class="dash-total-block" id="dash-base-block" style="display:none">
+            <span class="dash-total-label">Without Boosters</span>
+            <span class="dash-total-val dash-total-muted" id="dash-base-val">$0</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== RANKS PAGE ===== -->
+    <div id="page-ranks" class="page">
+      <div class="prestige-header">
+        <h2>&#127941; Rank Goal Calculator</h2>
+        <p class="prestige-intro">Pick where you are now and where you want to be. See exactly how much more money you need to get there, add your balance to track progress, and check what your target rank unlocks.</p>
+      </div>
+
+      <!-- Inputs: current / target position + balance -->
+      <section class="card card-overflow ranks-input-card">
+        <div class="ranks-input-grid">
+          <div class="ranks-input-col">
+            <span class="ranks-col-title">Current position</span>
+            <label class="ranks-field-label" for="ranks-cur-prestige-input">Prestige</label>
+            <div id="ranks-cur-prestige" class="ranks-combo"></div>
+            <label class="ranks-field-label" for="ranks-cur-rank-input">Chem rank</label>
+            <div id="ranks-cur-rank" class="ranks-combo"></div>
+          </div>
+          <div class="ranks-input-col">
+            <span class="ranks-col-title">Target rank</span>
+            <label class="ranks-field-label" for="ranks-tgt-prestige-input">Prestige</label>
+            <div id="ranks-tgt-prestige" class="ranks-combo"></div>
+            <label class="ranks-field-label" for="ranks-tgt-rank-input">Chem rank</label>
+            <div id="ranks-tgt-rank" class="ranks-combo"></div>
+          </div>
+          <div class="ranks-input-col">
+            <span class="ranks-col-title">Your balance <span class="ranks-col-opt">(optional)</span></span>
+            <label class="ranks-field-label" for="ranks-balance">Current money</label>
+            <div class="ranks-balance-wrap">
+              <span class="ranks-balance-prefix">$</span>
+              <input type="number" id="ranks-balance" class="ranks-balance-input" inputmode="numeric" min="0" step="any" placeholder="0" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Friendly validation message (hidden unless target is behind current) -->
+      <div id="ranks-msg" class="ranks-msg" hidden></div>
+
+      <!-- Result KPIs -->
+      <div class="stats-row" id="ranks-kpis">
+        <div class="stat-card">
+          <div class="stat-label">Money Needed</div>
+          <div class="stat-value" id="ranks-kpi-needed">&#8212;</div>
+          <div class="stat-sub" id="ranks-kpi-needed-sub">to reach your target</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Remaining After Balance</div>
+          <div class="stat-value" id="ranks-kpi-remaining">&#8212;</div>
+          <div class="stat-sub" id="ranks-kpi-remaining-sub">still to earn</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Progress to Target</div>
+          <div class="stat-value" id="ranks-kpi-pct">&#8212;</div>
+          <div class="stat-sub" id="ranks-kpi-pct-sub">of the way there</div>
+        </div>
+      </div>
+
+      <!-- Progress-to-target bar -->
+      <section class="card ranks-progress-card">
+        <div class="ranks-progress-head">
+          <span class="ranks-progress-label" id="ranks-progress-label">Progress</span>
+          <span class="ranks-progress-pct" id="ranks-progress-pct">&#8212;</span>
+        </div>
+        <div class="ranks-progress" id="ranks-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="ranks-progress-fill" id="ranks-progress-fill"></div>
+        </div>
+      </section>
+
+      <!-- Target rank rewards -->
+      <section class="card ranks-rewards-card">
+        <div class="card-header">
+          <h2>&#127873; Rewards Along the Way</h2>
+          <span class="ranks-rewards-rank" id="ranks-rewards-rank"></span>
+        </div>
+        <div id="ranks-rewards" class="ranks-rewards">
+          <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== GRAPHS PAGE ===== -->
+    <div id="page-graphs" class="page">
+
+      <!-- Market pulse KPIs -->
+      <div class="stats-row" id="graph-kpis">
+        <div class="stat-card">
+          <div class="stat-label">Market Breadth</div>
+          <div class="stat-value" id="kpi-breadth">&#8212;</div>
+          <div class="stat-sub" id="kpi-breadth-sub">vs previous snapshot</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Top Gainer</div>
+          <div class="stat-value" id="kpi-gainer">&#8212;</div>
+          <div class="stat-sub" id="kpi-gainer-sub">&#8212;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Top Loser</div>
+          <div class="stat-value" id="kpi-loser">&#8212;</div>
+          <div class="stat-sub" id="kpi-loser-sub">&#8212;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Most Volatile</div>
+          <div class="stat-value" id="kpi-volatile">&#8212;</div>
+          <div class="stat-sub" id="kpi-volatile-sub">high-low range</div>
+        </div>
+      </div>
+
+      <!-- Main price history chart -->
+      <section class="card card-overflow">
+        <div class="card-header">
+          <h2>&#128200; Price History</h2>
+          <div id="graph-compound-select" class="graph-combo"></div>
+        </div>
+        <div class="chart-readout" id="chart-readout">
+          <div class="readout-item"><span class="readout-label">Current</span><span class="readout-val" id="ro-current">&#8212;</span></div>
+          <div class="readout-item"><span class="readout-label">Change</span><span class="readout-val" id="ro-change">&#8212;</span></div>
+          <div class="readout-item"><span class="readout-label">Period High</span><span class="readout-val" id="ro-high">&#8212;</span></div>
+          <div class="readout-item"><span class="readout-label">Period Low</span><span class="readout-val" id="ro-low">&#8212;</span></div>
+        </div>
+        <div class="main-chart-wrap">
+          <canvas id="main-chart"></canvas>
+        </div>
+      </section>
+
+      <!-- Movers: gainers + losers -->
+      <div class="movers-row">
+        <section class="card mover-card">
+          <div class="card-header"><h2 class="mover-title up">&#9650; Top Gainers</h2></div>
+          <div class="mover-list" id="movers-up"></div>
+        </section>
+        <section class="card mover-card">
+          <div class="card-header"><h2 class="mover-title down">&#9660; Top Losers</h2></div>
+          <div class="mover-list" id="movers-down"></div>
+        </section>
+      </div>
+
+      <!-- All compounds -->
+      <section class="card all-compounds-card">
+        <div class="card-header">
+          <h2>&#129518; All Compounds</h2>
+          <div class="grid-toolbar">
+            <input type="text" id="spark-search" class="spark-search" placeholder="Search..." oninput="renderSparklines()" />
+            <select id="spark-sort" class="spark-sort" onchange="renderSparklines()">
+              <option value="change">Sort: Biggest move</option>
+              <option value="price">Sort: Price</option>
+              <option value="volatility">Sort: Volatility</option>
+              <option value="name">Sort: Name</option>
+            </select>
+          </div>
+        </div>
+        <div class="sparkline-grid" id="sparkline-grid">
+          <!-- sparkline cards injected by JS -->
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== PRESTIGE PAGE (calculator + progress tracker, merged) ===== -->
+    <div id="page-prestige" class="page">
+      <div class="prestige-header">
+        <h2>&#11088; Prestige</h2>
+        <p class="prestige-intro">Upload your prestige-menu JSON dump to track progress over time and auto-fill the calculator with your real counts. Each crop card shows your rate &amp; ETA plus exactly what to sell to finish. 1 inventory = 2,304 items.</p>
+      </div>
+
+      <!-- Upload -->
+      <section class="card prog-upload-card">
+        <label class="prog-drop" id="prog-drop">
+          <input type="file" id="prog-file" accept=".json,application/json" hidden />
+          <span class="prog-drop-icon">⬆️</span>
+          <span class="prog-drop-title">Drop prestige JSON here, or click to choose a file</span>
+          <span class="prog-drop-sub">Exported from your in-game prestige menu chest</span>
+        </label>
+        <div class="prog-or">— or paste JSON —</div>
+        <textarea id="prog-paste" class="prog-paste" placeholder='[ { "slot": 0, "item": { ... } }, ... ]'></textarea>
+        <div class="prog-upload-actions">
+          <button class="btn btn-primary" onclick="submitPrestigePaste()">Parse &amp; Save Snapshot</button>
+          <span id="prog-upload-status" class="prog-upload-status"></span>
+        </div>
+      </section>
+
+      <!-- Live data banner (populated by JS) -->
+      <div id="prestige-live-banner"></div>
+
+      <!-- KPI summary -->
+      <div class="stats-row" id="prog-kpis" style="display:none">
+        <div class="stat-card">
+          <div class="stat-label">Prestige Earned</div>
+          <div class="stat-value" id="prog-kpi-earned">&#8212;</div>
+          <div class="stat-sub" id="prog-kpi-earned-sub">objectives complete</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Completion</div>
+          <div class="stat-value" id="prog-kpi-avg">&#8212;</div>
+          <div class="stat-sub" id="prog-kpi-avg-sub">across all objectives</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Closest to Done</div>
+          <div class="stat-value" id="prog-kpi-close">&#8212;</div>
+          <div class="stat-sub" id="prog-kpi-close-sub">&#8212;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Fastest Mover</div>
+          <div class="stat-value" id="prog-kpi-fast">&#8212;</div>
+          <div class="stat-sub" id="prog-kpi-fast-sub">&#8212;</div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <section class="card" id="prog-chart-card" style="display:none">
+        <div class="card-header">
+          <h2>&#128200; Progress Over Time</h2>
+          <select id="prog-objective-select" onchange="renderProgressChart()"></select>
+        </div>
+        <div class="chart-readout" id="prog-readout">
+          <div class="readout-item"><span class="readout-label">Progress</span><span class="readout-val" id="prog-ro-cur">&#8212;</span></div>
+          <div class="readout-item"><span class="readout-label">Complete</span><span class="readout-val" id="prog-ro-pct">&#8212;</span></div>
+          <div class="readout-item"><span class="readout-label">Rate / day</span><span class="readout-val" id="prog-ro-rate">&#8212;</span></div>
+          <div class="readout-item"><span class="readout-label">Est. Finish</span><span class="readout-val" id="prog-ro-eta">&#8212;</span></div>
+        </div>
+        <div class="main-chart-wrap"><canvas id="prog-chart"></canvas></div>
+      </section>
+
+      <!-- Merged crop objective cards (progress + sell calculator) -->
+      <div class="prestige-grid" id="prestige-grid">
+        <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
+      </div>
+
+      <!-- Police objective cards (status only — no recipe to sell) -->
+      <div id="prog-objectives"></div>
+
+      <!-- Sell tracker (manual entry — hidden when live data is active) -->
+      <section class="card" id="prestige-tracker-card" style="margin-top:20px">
+        <div class="card-header">
+          <h2>&#128230; Sell Tracker</h2>
+          <button class="btn btn-secondary" onclick="resetPrestigeSells()">Reset All</button>
+        </div>
+        <div id="prestige-tracker" class="prestige-tracker">
+          <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
+        </div>
+      </section>
+
+      <!-- Snapshots -->
+      <section class="card" id="prog-snaps-card" style="display:none;margin-top:20px">
+        <div class="card-header">
+          <h2>&#128194; Snapshots</h2>
+          <button class="btn btn-secondary" onclick="clearPrestigeProgress()">Clear All</button>
+        </div>
+        <div id="prog-snaps" class="prog-snaps"></div>
+      </section>
+    </div>
+
+    <!-- ===== SUSHI PAGE ===== -->
+    <div id="page-sushi" class="page">
+      <div class="prestige-header">
+        <h2>🍣 Sushi Profit Calculator</h2>
+        <p class="prestige-intro">Find the most profitable way to process your catch at Hiruko's at The Cove. Net gain = revenue minus ingredient costs (rice &amp; nori). Fish itself has no cost since it's caught.</p>
+      </div>
+
+      <!-- Controls -->
+      <section class="card sushi-controls">
+        <div class="sushi-controls-inner">
+          <div class="sushi-control-block">
+            <span class="sushi-ctrl-label">Sushi Rice Cost</span>
+            <div class="sushi-toggle">
+              <button class="sushi-rice-btn active" data-mode="craft" onclick="setSushiRiceMode('craft')">Craft <em>$16.25</em></button>
+              <button class="sushi-rice-btn" data-mode="buy" onclick="setSushiRiceMode('buy')">Buy Raw <em>$21.33</em></button>
+            </div>
+            <span class="sushi-hint">Craft: 1 vinegar ($25) + 4 rice ($10ea) → 4 sushi rice</span>
+          </div>
+          <div class="sushi-control-block">
+            <span class="sushi-ctrl-label">Sushi Nori Cost</span>
+            <div class="sushi-toggle">
+              <button class="sushi-nori-btn active" data-mode="farm" onclick="setSushiNoriMode('farm')">Farmed <em>$0</em></button>
+              <button class="sushi-nori-btn" data-mode="buy" onclick="setSushiNoriMode('buy')">Buy <em>$14.80</em></button>
+            </div>
+            <span class="sushi-hint">Farm: 3 kelp → dry → smelt → nori</span>
+          </div>
+          <div class="sushi-control-block">
+            <span class="sushi-ctrl-label">Fish on Hand <span class="sushi-ctrl-sub">(optional — shows totals)</span></span>
+            <div class="sushi-qty-row">
+              <label class="sushi-qty-label"><span class="sushi-qty-fish"><img src="/static/icons/cod.png" class="sushi-qty-icon" alt="" />Cod</span><input type="number" min="0" id="sushi-qty-cod" class="sushi-qty-input" placeholder="0" oninput="renderSushi()" /></label>
+              <label class="sushi-qty-label"><span class="sushi-qty-fish"><img src="/static/icons/salmon.png" class="sushi-qty-icon" alt="" />Salmon</span><input type="number" min="0" id="sushi-qty-salmon" class="sushi-qty-input" placeholder="0" oninput="renderSushi()" /></label>
+              <label class="sushi-qty-label"><span class="sushi-qty-fish"><img src="/static/icons/pufferfish.png" class="sushi-qty-icon" alt="" />Pufferfish</span><input type="number" min="0" id="sushi-qty-pufferfish" class="sushi-qty-input" placeholder="0" oninput="renderSushi()" /></label>
+              <label class="sushi-qty-label"><span class="sushi-qty-fish"><img src="/static/icons/tropical_fish.png" class="sushi-qty-icon" alt="" />Tropical</span><input type="number" min="0" id="sushi-qty-tropical" class="sushi-qty-input" placeholder="0" oninput="renderSushi()" /></label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div id="sushi-results"></div>
+    </div>
+
+    <!-- ===== VOTE PAGE ===== -->
+    <div id="page-vote" class="page">
+      <div class="prestige-header">
+        <h2>🗳️ Vote for MCLabs</h2>
+        <p class="prestige-intro">Support the server and earn in-game rewards by voting daily. Reset times vary by site — each card shows when it resets.</p>
+      </div>
+      <div id="vote-notif-bar"></div>
+      <div class="card vote-ntfy-card" id="vote-ntfy"></div>
+      <div class="card vote-summary-card" id="vote-summary"></div>
+      <div class="vote-grid" id="vote-grid"></div>
+    </div>
+
+  </main>
+
+  <script src="/static/ranks.js?v=1"></script>
+  <script src="/static/combobox.js?v=1"></script>
+  <script src="/static/dropdown.js?v=45"></script>
+  <script src="/static/app.js?v=48"></script>
+</body>
+</html>

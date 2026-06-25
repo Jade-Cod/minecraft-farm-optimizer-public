@@ -1,0 +1,3 @@
+labs.faded.me {
+    reverse_proxy mclabs-tools:8000
+}

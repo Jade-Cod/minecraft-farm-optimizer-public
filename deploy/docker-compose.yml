@@ -1,0 +1,48 @@
+services:
+  mclabs-tools:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: mclabs-tools
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-America/Los_Angeles}
+      NTFY_SERVER: ${NTFY_SERVER:-https://ntfy.sh}
+      NTFY_TOPIC: ${NTFY_TOPIC:-}
+      NTFY_ENABLED: ${NTFY_ENABLED:-0}
+      APP_URL: ${APP_URL}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      SECURE_COOKIES: ${SECURE_COOKIES:-true}
+    volumes:
+      - mclabs-data:/app/backend/data
+    networks:
+      - web
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: mclabs-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - mclabs-tools
+    networks:
+      - web
+
+networks:
+  web:
+
+volumes:
+  mclabs-data:
+  caddy-data:
+  caddy-config:

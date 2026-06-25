@@ -1,0 +1,6 @@
+# Caddy reverse proxy for MCLabs Tools.
+# Copy this directory to the VPS and set APP_DOMAIN in deploy/.env.
+# Caddy automatically provisions a Let's Encrypt TLS certificate.
+{$APP_DOMAIN} {
+    reverse_proxy mclabs-tools:8000
+}
