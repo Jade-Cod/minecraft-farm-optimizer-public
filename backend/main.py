@@ -29,7 +29,13 @@ from jose import jwt, JWTError
 from deps import get_current_user, require_user, JWT_SECRET, JWT_ALGORITHM
 import auth as auth_module
 
-app = FastAPI(title="MCLabs Tools")
+_docs_enabled = os.environ.get("ENABLE_DOCS", "0") in ("1", "true", "True")
+app = FastAPI(
+    title="MCLabs Tools",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+)
 
 # Session middleware — required for Discord OAuth state parameter
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("JWT_SECRET", "dev-secret-change-me"))
