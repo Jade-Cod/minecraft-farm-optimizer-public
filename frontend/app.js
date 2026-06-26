@@ -189,8 +189,14 @@ async function init() {
 
 // ── Data loading ─────────────────────────────────────────────────────────────
 
+// onpick handler for the Prices "Sort" .ui-select — records the choice and reloads.
+function setSortOption(value) {
+  setUiSelectValue(document.getElementById('sort-select'), value);
+  reloadTable();
+}
+
 async function loadCrops() {
-  const sort = document.getElementById('sort-select')?.value || 'price';
+  const sort = document.getElementById('sort-select')?.dataset.value || 'price';
   // Always fetch the full dataset — category filter is applied locally
   const url = `${API}/api/crops?sort=${sort}`;
   try {
@@ -584,6 +590,18 @@ function populateDashSelect() {
 const UI_CARET = '<svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true">' +
   '<path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" ' +
   'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// Update a .ui-select trigger's stored value + visible label to match `value`,
+// resolving the label from its data-options. Shared by the simple pickers below.
+function setUiSelectValue(el, value) {
+  if (!el) return;
+  el.dataset.value = value;
+  let opts = [];
+  try { opts = JSON.parse(el.dataset.options || '[]'); } catch (e) { opts = []; }
+  const opt = opts.find(o => o[0] === value);
+  const label = el.querySelector('.ui-select-text');
+  if (label) label.textContent = opt ? opt[1] : value;
+}
 
 // Sync the dealer .ui-select trigger's stored value + visible label to dealerId.
 function setDealerTrigger(el) {
@@ -1403,7 +1421,8 @@ function renderPrestigeLiveBanner() {
   if (!livePrestigeProgress) {
     el.innerHTML = `<div class="prestige-live-banner empty">
       <span class="plb-icon">📡</span>
-      <span class="plb-text">No uploaded data yet. Upload a prestige dump above to auto-fill this calculator with your real progress.</span>
+      <span class="plb-text">No uploaded data yet. Paste a prestige dump to auto-fill this calculator with your real progress.</span>
+      <button class="plb-cta" type="button" onclick="openPrestigeUploadDrawer()">Paste your data</button>
     </div>`;
     if (trackerCard) trackerCard.style.display = '';
     return;
@@ -1818,26 +1837,35 @@ function renderProgressKPIs() {
 function populateProgObjectiveSelect() {
   const sel = document.getElementById('prog-objective-select');
   if (!sel) return;
-  const prev = sel.value;
+  const prev = sel.dataset.value;
   const ordered = progressData.objectives.slice().sort((a, b) =>
     a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
-  sel.innerHTML = ordered.map(o =>
-    `<option value="${o.objective_id}">${o.category}: ${o.label}</option>`).join('');
+  sel.dataset.options = JSON.stringify(
+    ordered.map(o => [o.objective_id, `${o.category}: ${o.label}`]));
   // Default to the closest-to-done incomplete objective
+  let selected = '';
   if (prev && ordered.some(o => o.objective_id === prev)) {
-    sel.value = prev;
+    selected = prev;
   } else {
     const stats = ordered.map(o => ({ o, s: progStats(o) }));
     const target = stats.filter(x => !x.s.complete).sort((a, b) => b.s.pct - a.s.pct)[0]
                 || stats[0];
-    if (target) sel.value = target.o.objective_id;
+    if (target) selected = target.o.objective_id;
   }
+  setUiSelectValue(sel, selected);
+}
+
+// onpick handler for the Progress Over Time .ui-select — records the objective
+// and re-renders the chart.
+function setProgObjective(value) {
+  setUiSelectValue(document.getElementById('prog-objective-select'), value);
+  renderProgressChart();
 }
 
 function renderProgressChart() {
   const sel = document.getElementById('prog-objective-select');
   if (!sel || !progressData) return;
-  const o = progressData.objectives.find(x => x.objective_id === sel.value);
+  const o = progressData.objectives.find(x => x.objective_id === sel.dataset.value);
   const canvas = document.getElementById('prog-chart');
   if (!o || !canvas) return;
   const s = progStats(o);
@@ -1909,7 +1937,7 @@ function renderProgressChart() {
 
 function focusProgObjective(id) {
   const sel = document.getElementById('prog-objective-select');
-  if (sel) { sel.value = id; renderProgressChart(); }
+  if (sel) { setUiSelectValue(sel, id); renderProgressChart(); }
   document.getElementById('prog-chart-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
@@ -1950,6 +1978,52 @@ async function clearPrestigeProgress() {
 function togglePrestigeHelp() {
   const help = document.getElementById('prestige-help');
   if (help) help.hidden = !help.hidden;
+}
+
+// ── Prestige upload drawer (left slide-out) ──────────────────────────────────
+let _prestigeDrawerReturnFocus = null;
+
+function openPrestigeUploadDrawer() {
+  const drawer = document.getElementById('prestige-upload-drawer');
+  const backdrop = document.getElementById('prestige-drawer-backdrop');
+  const handle = document.getElementById('prestige-upload-handle');
+  if (!drawer || drawer.dataset.open === 'true') return;
+
+  _prestigeDrawerReturnFocus = document.activeElement;
+  drawer.dataset.open = 'true';
+  drawer.setAttribute('aria-hidden', 'false');
+  if (backdrop) backdrop.dataset.open = 'true';
+  if (handle) handle.setAttribute('aria-expanded', 'true');
+  document.body.classList.add('drawer-open');
+  document.addEventListener('keydown', _prestigeDrawerKeydown);
+
+  // Focus the textarea once the open transition begins.
+  const paste = document.getElementById('prog-paste');
+  if (paste) requestAnimationFrame(() => paste.focus());
+}
+
+function closePrestigeUploadDrawer() {
+  const drawer = document.getElementById('prestige-upload-drawer');
+  const backdrop = document.getElementById('prestige-drawer-backdrop');
+  const handle = document.getElementById('prestige-upload-handle');
+  if (!drawer || drawer.dataset.open !== 'true') return;
+
+  drawer.dataset.open = 'false';
+  drawer.setAttribute('aria-hidden', 'true');
+  if (backdrop) backdrop.dataset.open = 'false';
+  if (handle) handle.setAttribute('aria-expanded', 'false');
+  document.body.classList.remove('drawer-open');
+  document.removeEventListener('keydown', _prestigeDrawerKeydown);
+
+  // Return focus to whatever launched the drawer (handle or empty-state CTA).
+  const target = _prestigeDrawerReturnFocus;
+  _prestigeDrawerReturnFocus = null;
+  if (target && document.contains(target)) target.focus();
+  else if (handle) handle.focus();
+}
+
+function _prestigeDrawerKeydown(e) {
+  if (e.key === 'Escape') { e.preventDefault(); closePrestigeUploadDrawer(); }
 }
 
 function submitPrestigePaste() {
@@ -1994,6 +2068,7 @@ async function submitPrestigeJSON(text, source) {
     const paste = document.getElementById('prog-paste');
     if (paste) paste.value = '';
     renderProgress();
+    closePrestigeUploadDrawer();   // success — get out of the user's way
   } catch (e) {
     setProgStatus('Upload failed — is the server running?', 'err');
   }

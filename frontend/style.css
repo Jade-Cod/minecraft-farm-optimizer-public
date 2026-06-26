@@ -17,6 +17,7 @@
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px rgba(84,172,210,0.7);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --glass: linear-gradient(145deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.03) 60%, rgba(255,255,255,0.01) 100%);
   --glass-border: rgba(255,255,255,0.1);
   --glass-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 -1px 0 rgba(0,0,0,0.15) inset, 0 8px 32px rgba(0,0,0,0.4);
@@ -958,23 +959,10 @@ canvas { display: block; }
 /* ── Progress tracker page ── */
 .prog-emoji { font-size: 18px; }
 
-/* ── Prestige page: input sidebar + main content take centre stage ── */
-.prestige-layout {
-  display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-  margin-top: 16px;
-}
-.prestige-sidebar { position: sticky; top: 16px; }
+/* ── Prestige page: full-width content; upload lives in the left drawer ── */
+.prestige-layout { margin-top: 16px; }
 .prestige-main { min-width: 0; }
-@media (max-width: 860px) {
-  .prestige-layout { grid-template-columns: 1fr; }
-  .prestige-sidebar { position: static; }
-}
 
-.prog-upload-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
-.prog-upload-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .prog-upload-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
 .prog-help-btn {
   background: none;
@@ -1147,6 +1135,106 @@ canvas { display: block; }
   transition: background 0.15s;
 }
 .plb-toggle:hover { background: rgba(255,255,255,0.16); }
+
+/* Empty-state CTA — opens the upload drawer */
+.plb-cta {
+  flex-shrink: 0; margin-left: auto;
+  background: rgba(41,105,176,0.85); color: #fff;
+  border: 1px solid rgba(84,172,210,0.4); border-radius: 100px;
+  padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background 0.15s, transform 0.14s var(--ease-out);
+}
+.plb-cta:hover { background: rgba(41,105,176,1); }
+.plb-cta:active { transform: scale(0.97); }
+.plb-cta:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ── Prestige upload drawer (left slide-out + edge handle) ── */
+/* Sit outside the page-enter choreography so they don't animate on page load. */
+#prestige-upload-handle,
+#prestige-drawer-backdrop,
+#prestige-upload-drawer { animation: none; }
+
+.prestige-upload-handle {
+  position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+  z-index: 1190; display: inline-flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 14px 10px; color: var(--text); cursor: pointer;
+  font-family: var(--font-body); font-size: 12px; font-weight: 600;
+  background: var(--glass); border: 1px solid var(--glass-border); border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  transition: transform 0.18s var(--ease-out), background 0.15s, box-shadow 0.15s;
+}
+.prestige-upload-handle:active { transform: translateY(-50%) scale(0.97); }
+.prestige-upload-handle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (hover: hover) and (pointer: fine) {
+  .prestige-upload-handle:hover {
+    background: rgba(255,255,255,0.12);
+    transform: translateY(-50%) translateX(2px);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.4);
+  }
+}
+.puh-icon { font-size: 16px; line-height: 1; }
+.puh-label { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 0.2px; }
+
+.prestige-drawer-backdrop {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+}
+.prestige-drawer-backdrop[data-open="true"] {
+  opacity: 1; visibility: visible;
+  transition: opacity 0.22s ease, visibility 0s;
+}
+
+.prestige-upload-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 1210;
+  width: min(380px, 92vw); display: flex; flex-direction: column; gap: 14px;
+  padding: 20px; overflow-y: auto;
+  background: rgba(26,26,30,0.98); border-right: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: 24px 0 60px rgba(0,0,0,0.5);
+  transform: translateX(-100%); visibility: hidden;
+  /* exit: faster (system responding) */
+  transition: transform 0.2s var(--ease-drawer), visibility 0s linear 0.2s;
+}
+.prestige-upload-drawer[data-open="true"] {
+  transform: translateX(0); visibility: visible;
+  /* enter: slightly slower */
+  transition: transform 0.28s var(--ease-drawer), visibility 0s;
+}
+.prestige-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.prestige-drawer-head-actions { display: flex; align-items: center; gap: 12px; }
+.prestige-drawer-close {
+  background: none; border: none; color: var(--muted);
+  font-size: 22px; line-height: 1; cursor: pointer; padding: 0 2px;
+  transition: color 0.15s;
+}
+.prestige-drawer-close:hover { color: var(--text); }
+.prestige-drawer-close:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+.prestige-drawer-body { display: flex; flex-direction: column; gap: 12px; }
+
+body.drawer-open { overflow: hidden; }
+
+@media (max-width: 860px) {
+  .prestige-upload-drawer { width: 100vw; border-right: none; }
+  .prestige-upload-handle { padding: 12px 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Swap the slide for a gentle fade; drop the handle hover translate. */
+  .prestige-upload-drawer,
+  .prestige-upload-drawer[data-open="true"] {
+    transform: none; opacity: 0;
+    transition: opacity 0.16s ease, visibility 0s linear 0.16s;
+  }
+  .prestige-upload-drawer[data-open="true"] {
+    opacity: 1; transition: opacity 0.16s ease, visibility 0s;
+  }
+  .prestige-upload-handle:active { transform: translateY(-50%); }
+  .prestige-upload-handle:hover { transform: translateY(-50%); }
+}
 
 .prestige-stats {
   display: grid;

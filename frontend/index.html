@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=51" />
+  <link rel="stylesheet" href="/static/style.css?v=52" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -109,12 +109,13 @@
           </div>
           <div class="table-controls">
             <input type="text" id="search" placeholder="Search compound..." oninput="filterTable()" />
-            <select id="sort-select" onchange="reloadTable()">
-              <option value="price">Sort: Price</option>
-              <option value="profit">Sort: Craft Profit</option>
-              <option value="change">Sort: % Change</option>
-              <option value="dph">Sort: $/hr</option>
-            </select>
+            <button type="button" id="sort-select" class="ui-select"
+              aria-haspopup="listbox" aria-expanded="false" aria-label="Sort"
+              data-value="price" data-onpick="setSortOption"
+              data-options='[["price","Sort: Price"],["profit","Sort: Craft Profit"],["change","Sort: % Change"],["dph","Sort: $/hr"]]'>
+              <span class="ui-select-text">Sort: Price</span>
+              <svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
           </div>
         </div>
         <div class="table-wrap">
@@ -395,34 +396,7 @@
       </div>
 
       <div class="prestige-layout">
-        <!-- Sidebar: paste input + how-it-works -->
-        <aside class="prestige-sidebar">
-          <section class="card prog-upload-card">
-            <div class="prog-upload-head">
-              <h3 class="prog-upload-title">Paste your data</h3>
-              <button class="prog-help-btn" type="button" onclick="togglePrestigeHelp()">How does this work?</button>
-            </div>
-
-            <div id="prestige-help" class="prestige-help" hidden>
-              <button class="prestige-help-close" type="button" onclick="togglePrestigeHelp()" aria-label="Dismiss">&times;</button>
-              <p class="prestige-help-lead">Pull your real progress straight from the game:</p>
-              <ol class="prestige-help-steps">
-                <li>Download the <a href="https://modrinth.com/mod/mEPBTWnK" target="_blank" rel="noopener">prestige exporter mod</a> from Modrinth and drop it into your <code>mods</code> folder.</li>
-                <li>Launch Minecraft and run <code>/prestige progress gui</code>.</li>
-                <li>In that menu, click <strong>Copy chest contents</strong>.</li>
-                <li>Paste it into the box below and hit <strong>Parse &amp; Save Snapshot</strong>.</li>
-              </ol>
-            </div>
-
-            <textarea id="prog-paste" class="prog-paste" placeholder="Paste your copied chest contents here…"></textarea>
-            <div class="prog-upload-actions">
-              <button class="btn btn-primary" onclick="submitPrestigePaste()">Parse &amp; Save Snapshot</button>
-            </div>
-            <span id="prog-upload-status" class="prog-upload-status"></span>
-          </section>
-        </aside>
-
-        <!-- Main column: the meat -->
+        <!-- Full-width content column (upload moved into the left drawer below) -->
         <div class="prestige-main">
           <!-- Live data banner (populated by JS) -->
           <div id="prestige-live-banner"></div>
@@ -455,7 +429,12 @@
           <section class="card" id="prog-chart-card" style="display:none">
             <div class="card-header">
               <h2>&#128200; Progress Over Time</h2>
-              <select id="prog-objective-select" onchange="renderProgressChart()"></select>
+              <button type="button" id="prog-objective-select" class="ui-select"
+                aria-haspopup="listbox" aria-expanded="false" aria-label="Objective"
+                data-value="" data-onpick="setProgObjective" data-options="[]">
+                <span class="ui-select-text">&#8212;</span>
+                <svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
             </div>
             <div class="chart-readout" id="prog-readout">
               <div class="readout-item"><span class="readout-label">Progress</span><span class="readout-val" id="prog-ro-cur">&#8212;</span></div>
@@ -495,6 +474,47 @@
           </section>
         </div>
       </div>
+
+      <!-- ===== Upload drawer (left slide-out) ===== -->
+      <button id="prestige-upload-handle" class="prestige-upload-handle" type="button"
+              aria-haspopup="dialog" aria-controls="prestige-upload-drawer" aria-expanded="false"
+              onclick="openPrestigeUploadDrawer()">
+        <span class="puh-icon" aria-hidden="true">&#128228;</span>
+        <span class="puh-label">Paste data</span>
+      </button>
+
+      <div id="prestige-drawer-backdrop" class="prestige-drawer-backdrop" data-open="false"
+           onclick="closePrestigeUploadDrawer()"></div>
+
+      <aside id="prestige-upload-drawer" class="prestige-upload-drawer" data-open="false"
+             role="dialog" aria-modal="true" aria-labelledby="prestige-drawer-title" aria-hidden="true">
+        <div class="prestige-drawer-head">
+          <h3 id="prestige-drawer-title" class="prog-upload-title">Paste your data</h3>
+          <div class="prestige-drawer-head-actions">
+            <button class="prog-help-btn" type="button" onclick="togglePrestigeHelp()">How does this work?</button>
+            <button class="prestige-drawer-close" type="button" aria-label="Close" onclick="closePrestigeUploadDrawer()">&times;</button>
+          </div>
+        </div>
+
+        <div class="prestige-drawer-body">
+          <div id="prestige-help" class="prestige-help" hidden>
+            <button class="prestige-help-close" type="button" onclick="togglePrestigeHelp()" aria-label="Dismiss">&times;</button>
+            <p class="prestige-help-lead">Pull your real progress straight from the game:</p>
+            <ol class="prestige-help-steps">
+              <li>Download the <a href="https://modrinth.com/mod/mEPBTWnK" target="_blank" rel="noopener">prestige exporter mod</a> from Modrinth and drop it into your <code>mods</code> folder.</li>
+              <li>Launch Minecraft and run <code>/prestige progress gui</code>.</li>
+              <li>In that menu, click <strong>Copy chest contents</strong>.</li>
+              <li>Paste it into the box below and hit <strong>Parse &amp; Save Snapshot</strong>.</li>
+            </ol>
+          </div>
+
+          <textarea id="prog-paste" class="prog-paste" placeholder="Paste your copied chest contents here…"></textarea>
+          <div class="prog-upload-actions">
+            <button class="btn btn-primary" onclick="submitPrestigePaste()">Parse &amp; Save Snapshot</button>
+          </div>
+          <span id="prog-upload-status" class="prog-upload-status"></span>
+        </div>
+      </aside>
     </div>
 
     <!-- ===== SUSHI PAGE ===== -->
@@ -554,7 +574,7 @@
 
   <script src="/static/ranks.js?v=1"></script>
   <script src="/static/combobox.js?v=1"></script>
-  <script src="/static/dropdown.js?v=45"></script>
-  <script src="/static/app.js?v=53"></script>
+  <script src="/static/dropdown.js?v=46"></script>
+  <script src="/static/app.js?v=54"></script>
 </body>
 </html>
