@@ -18,6 +18,7 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --glass: linear-gradient(145deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.03) 60%, rgba(255,255,255,0.01) 100%);
   --glass-border: rgba(255,255,255,0.1);
   --glass-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 -1px 0 rgba(0,0,0,0.15) inset, 0 8px 32px rgba(0,0,0,0.4);
@@ -961,7 +962,9 @@ canvas { display: block; }
 
 /* ── Prestige page: full-width content; upload lives in the left drawer ── */
 .prestige-layout { margin-top: 16px; }
-.prestige-main { min-width: 0; }
+/* Flex column so the banner, KPIs, chart, and crop grid get even breathing room
+   (the .page gap only spaces .prestige-layout as a whole, not its descendants). */
+.prestige-main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 
 .prog-upload-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
 .prog-help-btn {
@@ -1106,7 +1109,7 @@ canvas { display: block; }
 .prestige-live-banner {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 14px; border-radius: var(--radius);
-  font-size: 13px; margin-bottom: 16px;
+  font-size: 13px;
   border: 1px solid var(--glass-border);
   background: var(--glass);
   backdrop-filter: blur(16px) saturate(180%);
@@ -1179,13 +1182,23 @@ canvas { display: block; }
 
 .prestige-drawer-backdrop {
   position: fixed; inset: 0; z-index: 1200;
-  background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px);
   opacity: 0; visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+  /* close: dim clears quickly */
+  transition: opacity 0.26s var(--ease-out-expo),
+              backdrop-filter 0.26s var(--ease-out-expo),
+              -webkit-backdrop-filter 0.26s var(--ease-out-expo),
+              visibility 0s linear 0.26s;
 }
 .prestige-drawer-backdrop[data-open="true"] {
   opacity: 1; visibility: visible;
-  transition: opacity 0.22s ease, visibility 0s;
+  /* open: dim + blur ramp in over the same beat as the panel glide */
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  transition: opacity 0.42s var(--ease-out-expo),
+              backdrop-filter 0.42s var(--ease-out-expo),
+              -webkit-backdrop-filter 0.42s var(--ease-out-expo),
+              visibility 0s;
 }
 
 .prestige-upload-drawer {
@@ -1195,16 +1208,36 @@ canvas { display: block; }
   background: rgba(26,26,30,0.98); border-right: 1px solid rgba(255,255,255,0.12);
   backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
   box-shadow: 24px 0 60px rgba(0,0,0,0.5);
-  transform: translateX(-100%); visibility: hidden;
-  /* exit: faster (system responding) */
-  transition: transform 0.2s var(--ease-drawer), visibility 0s linear 0.2s;
+  transform: translateX(-100%); opacity: 0; visibility: hidden;
+  /* exit: quick, the system getting out of the way */
+  transition: transform 0.26s var(--ease-out-expo),
+              opacity 0.18s ease,
+              visibility 0s linear 0.26s;
 }
 .prestige-upload-drawer[data-open="true"] {
-  transform: translateX(0); visibility: visible;
-  /* enter: slightly slower */
-  transition: transform 0.28s var(--ease-drawer), visibility 0s;
+  transform: translateX(0); opacity: 1; visibility: visible;
+  /* enter: a longer, silky glide */
+  transition: transform 0.42s var(--ease-out-expo),
+              opacity 0.26s ease,
+              visibility 0s;
 }
-.prestige-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* Header + body settle in a beat after the panel arrives — slick, not flat. */
+.prestige-drawer-head,
+.prestige-drawer-body {
+  display: flex;
+  opacity: 0; transform: translateY(8px);
+  transition: opacity 0.3s ease, transform 0.34s var(--ease-out-expo);
+}
+.prestige-drawer-head { align-items: center; justify-content: space-between; gap: 10px; }
+.prestige-drawer-body { flex-direction: column; gap: 12px; }
+.prestige-upload-drawer[data-open="true"] .prestige-drawer-head {
+  opacity: 1; transform: none; transition-delay: 0.12s;
+}
+.prestige-upload-drawer[data-open="true"] .prestige-drawer-body {
+  opacity: 1; transform: none; transition-delay: 0.17s;
+}
+
 .prestige-drawer-head-actions { display: flex; align-items: center; gap: 12px; }
 .prestige-drawer-close {
   background: none; border: none; color: var(--muted);
@@ -1213,7 +1246,6 @@ canvas { display: block; }
 }
 .prestige-drawer-close:hover { color: var(--text); }
 .prestige-drawer-close:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
-.prestige-drawer-body { display: flex; flex-direction: column; gap: 12px; }
 
 body.drawer-open { overflow: hidden; }
 
@@ -1223,14 +1255,20 @@ body.drawer-open { overflow: hidden; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Swap the slide for a gentle fade; drop the handle hover translate. */
+  /* Swap the slide for a gentle crossfade; drop position-based motion. */
   .prestige-upload-drawer,
   .prestige-upload-drawer[data-open="true"] {
-    transform: none; opacity: 0;
-    transition: opacity 0.16s ease, visibility 0s linear 0.16s;
+    transform: none;
+    transition: opacity 0.18s ease, visibility 0s linear 0.18s;
   }
   .prestige-upload-drawer[data-open="true"] {
-    opacity: 1; transition: opacity 0.16s ease, visibility 0s;
+    transition: opacity 0.18s ease, visibility 0s;
+  }
+  .prestige-drawer-head,
+  .prestige-drawer-body,
+  .prestige-upload-drawer[data-open="true"] .prestige-drawer-head,
+  .prestige-upload-drawer[data-open="true"] .prestige-drawer-body {
+    transform: none; transition: opacity 0.18s ease; transition-delay: 0s;
   }
   .prestige-upload-handle:active { transform: translateY(-50%); }
   .prestige-upload-handle:hover { transform: translateY(-50%); }

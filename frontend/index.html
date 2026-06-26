@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=52" />
+  <link rel="stylesheet" href="/static/style.css?v=53" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -454,7 +454,7 @@
           <div id="prog-objectives"></div>
 
           <!-- Sell tracker (manual entry — hidden when live data is active) -->
-          <section class="card" id="prestige-tracker-card" style="margin-top:20px">
+          <section class="card" id="prestige-tracker-card">
             <div class="card-header">
               <h2>&#128230; Sell Tracker</h2>
               <button class="btn btn-secondary" onclick="resetPrestigeSells()">Reset All</button>
@@ -465,7 +465,7 @@
           </section>
 
           <!-- Snapshots -->
-          <section class="card" id="prog-snaps-card" style="display:none;margin-top:20px">
+          <section class="card" id="prog-snaps-card" style="display:none">
             <div class="card-header">
               <h2>&#128194; Snapshots</h2>
               <button class="btn btn-secondary" onclick="clearPrestigeProgress()">Clear All</button>
