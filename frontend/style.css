@@ -958,32 +958,70 @@ canvas { display: block; }
 /* ── Progress tracker page ── */
 .prog-emoji { font-size: 18px; }
 
-.prog-upload-card { display: flex; flex-direction: column; gap: 12px; }
-.prog-drop {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 28px 16px;
-  border: 1.5px dashed rgba(255,255,255,0.18);
-  border-radius: var(--radius);
-  background: rgba(255,255,255,0.03);
+/* ── Prestige page: input sidebar + main content take centre stage ── */
+.prestige-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 16px;
+}
+.prestige-sidebar { position: sticky; top: 16px; }
+.prestige-main { min-width: 0; }
+@media (max-width: 860px) {
+  .prestige-layout { grid-template-columns: 1fr; }
+  .prestige-sidebar { position: static; }
+}
+
+.prog-upload-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.prog-upload-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.prog-upload-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+.prog-help-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #54acd2;
+  font-size: 12px;
   cursor: pointer;
-  text-align: center;
-  transition: border-color 0.2s, background 0.2s;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
 }
-.prog-drop:hover, .prog-drop.dragging {
-  border-color: rgba(84,172,210,0.6);
+.prog-help-btn:hover { opacity: 0.85; }
+
+.prestige-help {
+  position: relative;
   background: rgba(84,172,210,0.08);
+  border: 1px solid rgba(84,172,210,0.25);
+  border-radius: var(--radius);
+  padding: 14px 16px;
 }
-.prog-drop-icon { font-size: 26px; }
-.prog-drop-title { font-weight: 600; font-size: 14px; }
-.prog-drop-sub { font-size: 12px; color: var(--muted); }
-.prog-or { text-align: center; font-size: 12px; color: var(--muted); }
+.prestige-help-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.prestige-help-close:hover { color: var(--text); }
+.prestige-help-lead { font-size: 12px; color: var(--muted); margin-bottom: 8px; padding-right: 16px; }
+.prestige-help-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 1.5; }
+.prestige-help-steps a { color: #54acd2; }
+.prestige-help-steps code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: rgba(0,0,0,0.3);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
 .prog-paste {
   width: 100%;
-  min-height: 90px;
+  min-height: 140px;
   resize: vertical;
   background: rgba(0,0,0,0.25);
   border: 1px solid rgba(255,255,255,0.1);
@@ -995,7 +1033,8 @@ canvas { display: block; }
 }
 .prog-paste:focus { outline: none; border-color: rgba(84,172,210,0.5); }
 .prog-upload-actions { display: flex; align-items: center; gap: 12px; }
-.prog-upload-status { font-size: 13px; color: var(--muted); }
+.prog-upload-actions .btn { width: 100%; justify-content: center; }
+.prog-upload-status { font-size: 13px; color: var(--muted); min-height: 1em; }
 .prog-upload-status.ok { color: var(--green); }
 .prog-upload-status.err { color: var(--red); }
 

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=50" />
+  <link rel="stylesheet" href="/static/style.css?v=51" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -391,94 +391,110 @@
     <div id="page-prestige" class="page">
       <div class="prestige-header">
         <h2>&#11088; Prestige</h2>
-        <p class="prestige-intro">Upload your prestige-menu JSON dump to track progress over time and auto-fill the calculator with your real counts. Each crop card shows your rate &amp; ETA plus exactly what to sell to finish. 1 inventory = 2,304 items.</p>
+        <p class="prestige-intro">Paste your prestige-menu data to track progress over time and auto-fill the calculator with your real counts. Each crop card shows your rate &amp; ETA plus exactly what to sell to finish. 1 inventory = 2,304 items.</p>
       </div>
 
-      <!-- Upload -->
-      <section class="card prog-upload-card">
-        <label class="prog-drop" id="prog-drop">
-          <input type="file" id="prog-file" accept=".json,application/json" hidden />
-          <span class="prog-drop-icon">⬆️</span>
-          <span class="prog-drop-title">Drop prestige JSON here, or click to choose a file</span>
-          <span class="prog-drop-sub">Exported from your in-game prestige menu chest</span>
-        </label>
-        <div class="prog-or">— or paste JSON —</div>
-        <textarea id="prog-paste" class="prog-paste" placeholder='[ { "slot": 0, "item": { ... } }, ... ]'></textarea>
-        <div class="prog-upload-actions">
-          <button class="btn btn-primary" onclick="submitPrestigePaste()">Parse &amp; Save Snapshot</button>
-          <span id="prog-upload-status" class="prog-upload-status"></span>
-        </div>
-      </section>
+      <div class="prestige-layout">
+        <!-- Sidebar: paste input + how-it-works -->
+        <aside class="prestige-sidebar">
+          <section class="card prog-upload-card">
+            <div class="prog-upload-head">
+              <h3 class="prog-upload-title">Paste your data</h3>
+              <button class="prog-help-btn" type="button" onclick="togglePrestigeHelp()">How does this work?</button>
+            </div>
 
-      <!-- Live data banner (populated by JS) -->
-      <div id="prestige-live-banner"></div>
+            <div id="prestige-help" class="prestige-help" hidden>
+              <button class="prestige-help-close" type="button" onclick="togglePrestigeHelp()" aria-label="Dismiss">&times;</button>
+              <p class="prestige-help-lead">Pull your real progress straight from the game:</p>
+              <ol class="prestige-help-steps">
+                <li>Download the <a href="https://modrinth.com/mod/mEPBTWnK" target="_blank" rel="noopener">prestige exporter mod</a> from Modrinth and drop it into your <code>mods</code> folder.</li>
+                <li>Launch Minecraft and run <code>/prestige progress gui</code>.</li>
+                <li>In that menu, click <strong>Copy chest contents</strong>.</li>
+                <li>Paste it into the box below and hit <strong>Parse &amp; Save Snapshot</strong>.</li>
+              </ol>
+            </div>
 
-      <!-- KPI summary -->
-      <div class="stats-row" id="prog-kpis" style="display:none">
-        <div class="stat-card">
-          <div class="stat-label">Prestige Earned</div>
-          <div class="stat-value" id="prog-kpi-earned">&#8212;</div>
-          <div class="stat-sub" id="prog-kpi-earned-sub">objectives complete</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Avg Completion</div>
-          <div class="stat-value" id="prog-kpi-avg">&#8212;</div>
-          <div class="stat-sub" id="prog-kpi-avg-sub">across all objectives</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Closest to Done</div>
-          <div class="stat-value" id="prog-kpi-close">&#8212;</div>
-          <div class="stat-sub" id="prog-kpi-close-sub">&#8212;</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Fastest Mover</div>
-          <div class="stat-value" id="prog-kpi-fast">&#8212;</div>
-          <div class="stat-sub" id="prog-kpi-fast-sub">&#8212;</div>
+            <textarea id="prog-paste" class="prog-paste" placeholder="Paste your copied chest contents here…"></textarea>
+            <div class="prog-upload-actions">
+              <button class="btn btn-primary" onclick="submitPrestigePaste()">Parse &amp; Save Snapshot</button>
+            </div>
+            <span id="prog-upload-status" class="prog-upload-status"></span>
+          </section>
+        </aside>
+
+        <!-- Main column: the meat -->
+        <div class="prestige-main">
+          <!-- Live data banner (populated by JS) -->
+          <div id="prestige-live-banner"></div>
+
+          <!-- KPI summary -->
+          <div class="stats-row" id="prog-kpis" style="display:none">
+            <div class="stat-card">
+              <div class="stat-label">Prestige Earned</div>
+              <div class="stat-value" id="prog-kpi-earned">&#8212;</div>
+              <div class="stat-sub" id="prog-kpi-earned-sub">objectives complete</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg Completion</div>
+              <div class="stat-value" id="prog-kpi-avg">&#8212;</div>
+              <div class="stat-sub" id="prog-kpi-avg-sub">across all objectives</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Closest to Done</div>
+              <div class="stat-value" id="prog-kpi-close">&#8212;</div>
+              <div class="stat-sub" id="prog-kpi-close-sub">&#8212;</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Fastest Mover</div>
+              <div class="stat-value" id="prog-kpi-fast">&#8212;</div>
+              <div class="stat-sub" id="prog-kpi-fast-sub">&#8212;</div>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <section class="card" id="prog-chart-card" style="display:none">
+            <div class="card-header">
+              <h2>&#128200; Progress Over Time</h2>
+              <select id="prog-objective-select" onchange="renderProgressChart()"></select>
+            </div>
+            <div class="chart-readout" id="prog-readout">
+              <div class="readout-item"><span class="readout-label">Progress</span><span class="readout-val" id="prog-ro-cur">&#8212;</span></div>
+              <div class="readout-item"><span class="readout-label">Complete</span><span class="readout-val" id="prog-ro-pct">&#8212;</span></div>
+              <div class="readout-item"><span class="readout-label">Rate / day</span><span class="readout-val" id="prog-ro-rate">&#8212;</span></div>
+              <div class="readout-item"><span class="readout-label">Est. Finish</span><span class="readout-val" id="prog-ro-eta">&#8212;</span></div>
+            </div>
+            <div class="main-chart-wrap"><canvas id="prog-chart"></canvas></div>
+          </section>
+
+          <!-- Merged crop objective cards (progress + sell calculator) -->
+          <div class="prestige-grid" id="prestige-grid">
+            <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
+          </div>
+
+          <!-- Police objective cards (status only — no recipe to sell) -->
+          <div id="prog-objectives"></div>
+
+          <!-- Sell tracker (manual entry — hidden when live data is active) -->
+          <section class="card" id="prestige-tracker-card" style="margin-top:20px">
+            <div class="card-header">
+              <h2>&#128230; Sell Tracker</h2>
+              <button class="btn btn-secondary" onclick="resetPrestigeSells()">Reset All</button>
+            </div>
+            <div id="prestige-tracker" class="prestige-tracker">
+              <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
+            </div>
+          </section>
+
+          <!-- Snapshots -->
+          <section class="card" id="prog-snaps-card" style="display:none;margin-top:20px">
+            <div class="card-header">
+              <h2>&#128194; Snapshots</h2>
+              <button class="btn btn-secondary" onclick="clearPrestigeProgress()">Clear All</button>
+            </div>
+            <div id="prog-snaps" class="prog-snaps"></div>
+          </section>
         </div>
       </div>
-
-      <!-- Chart -->
-      <section class="card" id="prog-chart-card" style="display:none">
-        <div class="card-header">
-          <h2>&#128200; Progress Over Time</h2>
-          <select id="prog-objective-select" onchange="renderProgressChart()"></select>
-        </div>
-        <div class="chart-readout" id="prog-readout">
-          <div class="readout-item"><span class="readout-label">Progress</span><span class="readout-val" id="prog-ro-cur">&#8212;</span></div>
-          <div class="readout-item"><span class="readout-label">Complete</span><span class="readout-val" id="prog-ro-pct">&#8212;</span></div>
-          <div class="readout-item"><span class="readout-label">Rate / day</span><span class="readout-val" id="prog-ro-rate">&#8212;</span></div>
-          <div class="readout-item"><span class="readout-label">Est. Finish</span><span class="readout-val" id="prog-ro-eta">&#8212;</span></div>
-        </div>
-        <div class="main-chart-wrap"><canvas id="prog-chart"></canvas></div>
-      </section>
-
-      <!-- Merged crop objective cards (progress + sell calculator) -->
-      <div class="prestige-grid" id="prestige-grid">
-        <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
-      </div>
-
-      <!-- Police objective cards (status only — no recipe to sell) -->
-      <div id="prog-objectives"></div>
-
-      <!-- Sell tracker (manual entry — hidden when live data is active) -->
-      <section class="card" id="prestige-tracker-card" style="margin-top:20px">
-        <div class="card-header">
-          <h2>&#128230; Sell Tracker</h2>
-          <button class="btn btn-secondary" onclick="resetPrestigeSells()">Reset All</button>
-        </div>
-        <div id="prestige-tracker" class="prestige-tracker">
-          <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
-        </div>
-      </section>
-
-      <!-- Snapshots -->
-      <section class="card" id="prog-snaps-card" style="display:none;margin-top:20px">
-        <div class="card-header">
-          <h2>&#128194; Snapshots</h2>
-          <button class="btn btn-secondary" onclick="clearPrestigeProgress()">Clear All</button>
-        </div>
-        <div id="prog-snaps" class="prog-snaps"></div>
-      </section>
     </div>
 
     <!-- ===== SUSHI PAGE ===== -->
@@ -539,6 +555,6 @@
   <script src="/static/ranks.js?v=1"></script>
   <script src="/static/combobox.js?v=1"></script>
   <script src="/static/dropdown.js?v=45"></script>
-  <script src="/static/app.js?v=52"></script>
+  <script src="/static/app.js?v=53"></script>
 </body>
 </html>

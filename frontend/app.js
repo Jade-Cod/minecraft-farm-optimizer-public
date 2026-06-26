@@ -11,7 +11,6 @@ let graphsInitialized = false;
 let graphHistory = null;
 let progressData = null;        // { snapshots:[ms], objectives:[...], inventory_size }
 let progChartInstance = null;
-let progDropWired = false;
 const INV_SIZE = 2304;          // items per inventory (mirrors backend INVENTORY_SIZE)
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -1392,7 +1391,6 @@ async function renderPrestige() {
 
   renderMergedObjectives();        // merged crop cards + Police status cards
   renderPrestigeTracker();         // self-hides when live data is active
-  wireProgressUpload();            // guarded by progDropWired
 }
 
 // Banner above the cards: shows whether the calculator is running on real
@@ -1948,30 +1946,10 @@ async function clearPrestigeProgress() {
 
 // ── Upload handling ────────────────────────────────────────────────────────────
 
-function wireProgressUpload() {
-  if (progDropWired) return;
-  const drop = document.getElementById('prog-drop');
-  const file = document.getElementById('prog-file');
-  if (!drop || !file) return;
-  progDropWired = true;
-
-  file.addEventListener('change', () => {
-    if (file.files && file.files[0]) readProgressFile(file.files[0]);
-  });
-  ['dragenter', 'dragover'].forEach(ev =>
-    drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragging'); }));
-  ['dragleave', 'drop'].forEach(ev =>
-    drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('dragging'); }));
-  drop.addEventListener('drop', e => {
-    const f = e.dataTransfer?.files?.[0];
-    if (f) readProgressFile(f);
-  });
-}
-
-function readProgressFile(f) {
-  const reader = new FileReader();
-  reader.onload = () => submitPrestigeJSON(reader.result, f.name);
-  reader.readAsText(f);
+// Toggle the dismissable "How does this work?" instructions panel.
+function togglePrestigeHelp() {
+  const help = document.getElementById('prestige-help');
+  if (help) help.hidden = !help.hidden;
 }
 
 function submitPrestigePaste() {
@@ -2015,8 +1993,6 @@ async function submitPrestigeJSON(text, source) {
       'ok');
     const paste = document.getElementById('prog-paste');
     if (paste) paste.value = '';
-    const file = document.getElementById('prog-file');
-    if (file) file.value = '';
     renderProgress();
   } catch (e) {
     setProgStatus('Upload failed — is the server running?', 'err');
