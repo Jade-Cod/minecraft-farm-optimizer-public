@@ -2503,6 +2503,22 @@ function voteResetLabel(site) {
   return `${site.cooldown || 24}h after vote`;
 }
 
+// Opt-in diagnostics for pinning down a misbehaving reset (e.g. Minecraft Buzz).
+// Enable with ?votedebug in the URL or localStorage.voteDebug = '1' in the console.
+function isVoteDebug() {
+  try {
+    return location.search.includes('votedebug') || localStorage.getItem('voteDebug') === '1';
+  } catch (_) { return false; }
+}
+
+function voteDebugInfo(site) {
+  const voted = voteState[site.id] || 0;
+  const fmt = ms => ms ? new Date(ms).toLocaleString() : '—';
+  const readyAt = voted ? voteReadyAt(site, voted) : 0;
+  const model = site.resetHourPT != null ? `resetHourPT=${site.resetHourPT}` : `cooldown=${site.cooldown || 24}h`;
+  return `${model} · voted ${fmt(voted)} · resets ${fmt(readyAt)}`;
+}
+
 function formatVoteTimer(ms) {
   if (ms <= 0) return '';
   const h = Math.floor(ms / 3600000);
@@ -2514,7 +2530,12 @@ function formatVoteTimer(ms) {
 async function recordVote(id) {
   const site = VOTE_SITES.find(s => s.id === id);
   if (!site) return;
+  // Always let the user open the vote page — even while the timer is still
+  // running you may want to revisit the site early.
   window.open(site.url, '_blank');
+  // But only (re)start the cooldown when the site is actually votable again,
+  // so an early visit can't wrongly reset a running timer.
+  if (!isVoteReady(site)) return;
   // Optimistically update locally, then persist to server
   voteState[id] = Date.now();
   renderVoting();
@@ -2592,10 +2613,15 @@ function tickVoteTimers() {
     if (!timerEl) continue;
 
     if (ms <= 0) {
-      if (btnEl && btnEl.disabled) anyExpired = true;  // just flipped to ready
+      // Just flipped to ready — the button was still wearing the "voted" look.
+      if (btnEl && btnEl.classList.contains('vote-btn-voted')) anyExpired = true;
       timerEl.textContent = '';
       cardEl?.classList.remove('vote-card-voted');
-      if (btnEl) { btnEl.textContent = 'Vote Now'; btnEl.disabled = false; btnEl.classList.remove('vote-btn-voted'); }
+      if (btnEl) {
+        btnEl.textContent = 'Vote Now';
+        btnEl.title = 'Vote now';
+        btnEl.classList.remove('vote-btn-voted');
+      }
     } else {
       timerEl.textContent = formatVoteTimer(ms);
     }
@@ -2758,10 +2784,11 @@ async function renderVoting() {
       <button class="vote-btn${ready ? '' : ' vote-btn-voted'}"
               id="vote-btn-${site.id}"
               onclick="recordVote('${site.id}')"
-              ${ready ? '' : 'disabled'}>
-        ${ready ? 'Vote Now' : '✓ Voted'}
+              title="${ready ? 'Vote now' : 'Open the vote page (timer still running)'}">
+        ${ready ? 'Vote Now' : '✓ Voted · Open ↗'}
       </button>
       <div class="vote-timer" id="vote-timer-${site.id}">${ready ? '' : formatVoteTimer(ms)}</div>
+      ${isVoteDebug() ? `<div class="vote-debug">${voteDebugInfo(site)}</div>` : ''}
     </div>`;
   }).join('');
 

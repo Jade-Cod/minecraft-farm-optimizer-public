@@ -2279,6 +2279,25 @@ body.drawer-open { overflow: hidden; }
   box-shadow: none;
   transform: none;
 }
+/* The "voted" button is greyed but still clickable — it opens the vote page. */
+.vote-btn.vote-btn-voted {
+  cursor: pointer;
+}
+.vote-btn.vote-btn-voted:hover {
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.1);
+}
+
+/* Opt-in vote diagnostics (?votedebug) — raw timestamps for pinning down resets */
+.vote-debug {
+  margin-top: 6px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+  opacity: 0.8;
+}
 
 /* Countdown timer below button */
 .vote-timer {
