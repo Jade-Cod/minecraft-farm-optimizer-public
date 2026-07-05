@@ -197,6 +197,12 @@ function setSortOption(value) {
   reloadTable();
 }
 
+// onpick handler for the Graphs "All Compounds" Sort .ui-select.
+function setSparkSort(value) {
+  setUiSelectValue(document.getElementById('spark-sort'), value);
+  renderSparklines();
+}
+
 async function loadCrops() {
   const sort = document.getElementById('sort-select')?.dataset.value || 'price';
   // Always fetch the full dataset — category filter is applied locally
@@ -1216,7 +1222,7 @@ function renderSparklines() {
   if (!grid) return;
 
   const query = (document.getElementById('spark-search')?.value || '').trim().toLowerCase();
-  const sortBy = document.getElementById('spark-sort')?.value || 'change';
+  const sortBy = document.getElementById('spark-sort')?.dataset.value || 'change';
 
   let crops = allCrops.filter(c => c.current_price != null);
   if (query) crops = crops.filter(c => c.name.toLowerCase().includes(query) || c.id.toLowerCase().includes(query));

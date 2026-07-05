@@ -374,12 +374,13 @@
           <h2>&#129518; All Compounds</h2>
           <div class="grid-toolbar">
             <input type="text" id="spark-search" class="spark-search" placeholder="Search..." oninput="renderSparklines()" />
-            <select id="spark-sort" class="spark-sort" onchange="renderSparklines()">
-              <option value="change">Sort: Biggest move</option>
-              <option value="price">Sort: Price</option>
-              <option value="volatility">Sort: Volatility</option>
-              <option value="name">Sort: Name</option>
-            </select>
+            <button type="button" id="spark-sort" class="ui-select"
+              aria-haspopup="listbox" aria-expanded="false" aria-label="Sort"
+              data-value="change" data-onpick="setSparkSort"
+              data-options='[["change","Sort: Biggest move"],["price","Sort: Price"],["volatility","Sort: Volatility"],["name","Sort: Name"]]'>
+              <span class="ui-select-text">Sort: Biggest move</span>
+              <svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
           </div>
         </div>
         <div class="sparkline-grid" id="sparkline-grid">

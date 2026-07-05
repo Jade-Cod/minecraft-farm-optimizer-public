@@ -635,16 +635,6 @@ canvas { display: block; }
   text-overflow: ellipsis;
 }
 
-.spark-sort {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: var(--radius);
-  color: var(--text);
-  padding: 5px 10px;
-  font-size: 13px;
-  backdrop-filter: blur(10px);
-}
-
 /* ── Searchable compound combobox (replaces native <select>) ── */
 /* The card that hosts a combobox must not clip its dropdown. */
 .card-overflow { overflow: visible; }
