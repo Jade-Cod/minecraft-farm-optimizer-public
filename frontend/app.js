@@ -11,6 +11,7 @@ let graphsInitialized = false;
 let graphHistory = null;
 let progressData = null;        // { snapshots:[ms], objectives:[...], inventory_size }
 let progChartInstance = null;
+let progChartRange = 'all';     // '7' | '30' | 'all' — days of history shown in the Progress Over Time chart
 const INV_SIZE = 2304;          // items per inventory (mirrors backend INVENTORY_SIZE)
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -159,12 +160,13 @@ function navigate() {
   }
   if (page === 'prestige') {
     renderPrestige();
+    positionTabPill('#prog-range-tabs');  // page is now visible — pill can measure the active tab
   }
   if (page === 'ranks' && !ranksInitialized) {
     initRanks();
   }
   if (page === 'prices') {
-    positionPriceTabPill();  // page is now visible — pill can measure the active tab
+    positionTabPill('#page-prices .tabs');  // page is now visible — pill can measure the active tab
   }
 }
 
@@ -408,15 +410,15 @@ function setPriceTab(tab, el) {
   priceTabCategory = tab;
   document.querySelectorAll('#page-prices .tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  positionPriceTabPill();
+  positionTabPill('#page-prices .tabs');
   renderTableFiltered();
 }
 
-// Slide + resize the price-tab pill to hug the active tab. Must run while the
-// prices page is visible (offsetWidth is 0 when hidden). The first call sizes
+// Slide + resize a .tabs pill to hug its active tab. Must run while the tab's
+// page/card is visible (offsetWidth is 0 when hidden). The first call sizes
 // the pill instantly; subsequent calls animate (see .tabs.pill-ready in CSS).
-function positionPriceTabPill() {
-  const tabs = document.querySelector('#page-prices .tabs');
+function positionTabPill(containerSelector) {
+  const tabs = document.querySelector(containerSelector);
   if (!tabs) return;
   const active = tabs.querySelector('.tab.active');
   if (!active || !active.offsetWidth) return;  // hidden / not laid out yet
@@ -427,8 +429,12 @@ function positionPriceTabPill() {
   }
 }
 
-window.addEventListener('resize', positionPriceTabPill);
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(positionPriceTabPill);
+function positionAllTabPills() {
+  positionTabPill('#page-prices .tabs');
+  positionTabPill('#prog-range-tabs');
+}
+window.addEventListener('resize', positionAllTabPills);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(positionAllTabPills);
 
 function filterTable() { renderTableFiltered(); }
 function reloadTable() { loadCrops(); }
@@ -1862,6 +1868,15 @@ function setProgObjective(value) {
   renderProgressChart();
 }
 
+// Tab handler for the Progress Over Time date-range filter (7D / 30D / All).
+function setProgRange(range, el) {
+  progChartRange = range;
+  el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  positionTabPill('#prog-range-tabs');
+  renderProgressChart();
+}
+
 function renderProgressChart() {
   const sel = document.getElementById('prog-objective-select');
   if (!sel || !progressData) return;
@@ -1873,20 +1888,21 @@ function renderProgressChart() {
   // Readout
   const setRO = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
   setRO('prog-ro-cur', `${invFmt(s.cur)} / ${invFmt(s.goal)} inv`);
-  setRO('prog-ro-pct', `<span style="color:${s.complete ? GP.yellow : GP.green}">${s.pct.toFixed(1)}%</span>`);
+  setRO('prog-ro-pct', `<span style="color:${s.complete ? GP.green : GP.yellow}">${s.pct.toFixed(1)}%</span>`);
   setRO('prog-ro-rate', s.rate != null ? `${invFmt(s.rate)} inv/day` : '<span style="color:var(--muted)">—</span>');
-  setRO('prog-ro-eta', s.complete ? '<span style="color:'+GP.yellow+'">✓ Complete</span>'
+  setRO('prog-ro-eta', s.complete ? '<span style="color:'+GP.green+'">✓ Complete</span>'
         : (s.etaDate ? new Date(s.etaDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
                      : '<span style="color:var(--muted)">—</span>'));
 
   if (progChartInstance) progChartInstance.destroy();
-  const hist = s.hist;
+  const cutoff = progChartRange === 'all' ? -Infinity : Date.now() - progChartRange * 86400000;
+  const hist = s.hist.filter(h => h.t >= cutoff);
   if (!hist.length) return;
 
   const labels = hist.map(h => progShortDate(h.t));
   const dataInv = hist.map(h => h.current / INV_SIZE);
   const goalInv = s.goal / INV_SIZE;
-  const lineColor = s.complete ? GP.yellow : GP.green;
+  const lineColor = s.complete ? GP.green : GP.yellow;
 
   progChartInstance = new Chart(canvas, {
     type: 'line',
@@ -1897,7 +1913,7 @@ function renderProgressChart() {
           label: 'Inventories sold',
           data: dataInv,
           borderColor: lineColor,
-          backgroundColor: s.complete ? 'rgba(227,179,65,0.10)' : 'rgba(63,185,80,0.10)',
+          backgroundColor: s.complete ? 'rgba(63,185,80,0.10)' : 'rgba(227,179,65,0.10)',
           fill: true, tension: 0.25,
           pointBackgroundColor: lineColor, pointRadius: 4, pointHoverRadius: 6,
         },

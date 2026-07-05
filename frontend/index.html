@@ -429,12 +429,19 @@
           <section class="card" id="prog-chart-card" style="display:none">
             <div class="card-header">
               <h2>&#128200; Progress Over Time</h2>
-              <button type="button" id="prog-objective-select" class="ui-select"
-                aria-haspopup="listbox" aria-expanded="false" aria-label="Objective"
-                data-value="" data-onpick="setProgObjective" data-options="[]">
-                <span class="ui-select-text">&#8212;</span>
-                <svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </button>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div class="tabs" id="prog-range-tabs">
+                  <button class="tab" onclick="setProgRange('7', this)">7D</button>
+                  <button class="tab" onclick="setProgRange('30', this)">30D</button>
+                  <button class="tab active" onclick="setProgRange('all', this)">All</button>
+                </div>
+                <button type="button" id="prog-objective-select" class="ui-select"
+                  aria-haspopup="listbox" aria-expanded="false" aria-label="Objective"
+                  data-value="" data-onpick="setProgObjective" data-options="[]">
+                  <span class="ui-select-text">&#8212;</span>
+                  <svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
             </div>
             <div class="chart-readout" id="prog-readout">
               <div class="readout-item"><span class="readout-label">Progress</span><span class="readout-val" id="prog-ro-cur">&#8212;</span></div>
@@ -575,6 +582,6 @@
   <script src="/static/ranks.js?v=1"></script>
   <script src="/static/combobox.js?v=1"></script>
   <script src="/static/dropdown.js?v=46"></script>
-  <script src="/static/app.js?v=54"></script>
+  <script src="/static/app.js?v=55"></script>
 </body>
 </html>
