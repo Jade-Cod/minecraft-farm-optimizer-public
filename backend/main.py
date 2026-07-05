@@ -348,9 +348,10 @@ def get_prestige():
 
 # ── Prestige progress tracker (uploaded menu dumps) ───────────────────────────
 
-_PROG_RE  = re.compile(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)")
-_TITLE_RE = re.compile(r"(Chems|Police)\s*-\s*(.+)", re.IGNORECASE)
-_VERB_RE  = re.compile(r"^(sell|collect|craft|harvest|mine)\s+", re.IGNORECASE)
+_PROG_RE      = re.compile(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)")
+_TITLE_RE     = re.compile(r"(Chems|Police)\s*-\s*(.+)", re.IGNORECASE)
+_VERB_RE      = re.compile(r"^(sell|collect|craft|harvest|mine)\s+", re.IGNORECASE)
+_INVENTORY_RE = re.compile(r"(\d[\d,]*)\s+inventor")
 
 
 def _slugify(s: str) -> str:
@@ -414,11 +415,14 @@ def parse_prestige_dump(data) -> list[dict]:
                 goal = int(pm.group(2).replace(",", ""))
                 break
 
-        # Completed Chems objectives have no progress bar — the game replaces it
-        # with "Prestige unlocked." and a reception date. Detect and backfill.
+        # Completed objectives have no progress bar — the game replaces it with
+        # a reception date + reward line ("+1 ... Prestige Unlocked"). Backfill
+        # current/goal from whatever the completed lore still tells us.
         if current is None or goal is None or goal <= 0:
             lore_flat = " ".join(_lore_lines(comps.get("minecraft:lore"))).lower()
-            if "prestige unlocked" in lore_flat and category == "Chems":
+            if "prestige unlocked" not in lore_flat:
+                continue
+            if category == "Chems":
                 crop_key = _VERB_RE.sub("", label).strip().lower()
                 tmp_crop = name_to_crop.get(crop_key)
                 if tmp_crop and tmp_crop["id"] in PRESTIGE_REQUIREMENTS:
@@ -427,7 +431,15 @@ def parse_prestige_dump(data) -> list[dict]:
                 else:
                     continue
             else:
-                continue
+                # Police goals are quoted in "inventories" (e.g. "You have
+                # confiscated 75 inventories of contraband.") — convert using
+                # the same raw-item-count unit the in-progress bars use.
+                inv_match = _INVENTORY_RE.search(lore_flat)
+                if inv_match:
+                    goal = int(inv_match.group(1).replace(",", "")) * INVENTORY_SIZE
+                    current = goal
+                else:
+                    continue
 
         goal_text = ""
         lore_lines = _lore_lines(comps.get("minecraft:lore"))
