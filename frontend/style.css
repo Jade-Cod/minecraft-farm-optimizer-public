@@ -26,7 +26,11 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  background: var(--bg);
+  overscroll-behavior-y: none;
+}
 
 body {
   background:
@@ -39,6 +43,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   min-height: 100dvh;
+  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -683,6 +688,12 @@ canvas { display: block; }
   box-shadow: var(--glass-shadow);
   transform-origin: top center;
   animation: cbxPop 160ms var(--ease-out);
+}
+/* When there isn't room to open downward (e.g. field near the bottom of a
+   mobile viewport), open upward instead so the full option list is reachable. */
+.cbx.cbx-flip .cbx-list {
+  top: auto; bottom: calc(100% + 6px);
+  transform-origin: bottom center;
 }
 @keyframes cbxPop {
   from { opacity: 0; transform: translateY(-4px) scale(0.985); }

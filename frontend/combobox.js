@@ -117,6 +117,16 @@
       list.innerHTML = html;
     }
 
+    function positionList() {
+      const rect = field.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const flip = spaceBelow < 160 && spaceAbove > spaceBelow;
+      mount.classList.toggle('cbx-flip', flip);
+      const available = (flip ? spaceAbove : spaceBelow) - 12;
+      list.style.maxHeight = Math.max(120, Math.min(320, available)) + 'px';
+    }
+
     function openList() {
       if (open) return;
       open = true;
@@ -124,6 +134,7 @@
       list.hidden = false;
       input.setAttribute('aria-expanded', 'true');
       mount.classList.add('cbx-open');
+      positionList();
     }
 
     function closeList(restore) {
