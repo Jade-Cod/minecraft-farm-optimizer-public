@@ -115,6 +115,70 @@ header {
   box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 2px 8px rgba(0,0,0,0.25);
 }
 
+/* ── Nav "Calculators" dropdown (from-scratch, not the .ui-select/.ui-menu widget) ── */
+.nav-dropdown { position: relative; flex-shrink: 0; }
+.nav-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  font-family: inherit;
+}
+.nav-dropdown-caret {
+  width: 9px;
+  height: 5px;
+  flex-shrink: 0;
+  opacity: 0.55;
+  transition: transform 0.18s cubic-bezier(0.23,1,0.32,1);
+}
+.nav-dropdown-trigger[aria-expanded="true"] .nav-dropdown-caret { transform: rotate(180deg); }
+.nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 150;
+  min-width: 190px;
+  padding: 4px;
+  background: rgba(26,26,30,0.98);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.5);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.96);
+  transform-origin: top left;
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0s linear 0.12s;
+}
+.nav-dropdown-menu[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+  transition: opacity 0.18s cubic-bezier(0.23,1,0.32,1), transform 0.18s cubic-bezier(0.23,1,0.32,1), visibility 0s;
+}
+.nav-dropdown-item {
+  display: block;
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.12s ease;
+}
+.nav-dropdown-item:hover { background: rgba(255,255,255,0.09); }
+.nav-dropdown-item.is-active { color: var(--blue); background: rgba(84,172,210,0.12); }
+@media (max-width: 700px) {
+  .nav-dropdown-menu { left: auto; right: 0; min-width: 160px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-dropdown-menu, .nav-dropdown-menu[data-open="true"] {
+    transform: none;
+    transition: opacity 0.12s ease, visibility 0s;
+  }
+}
+
 /* ── Main ── */
 main {
   max-width: 1200px;
@@ -2036,6 +2100,141 @@ body.drawer-open { overflow: hidden; }
 }
 .sushi-mat-sub { display: block; }
 .sushi-mat-farmed { color: #4ade80; font-size: 9px; }
+
+/* ── Lab Calculator — Nexus compound ratio tool ──────────────────────────── */
+.lab-controls {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.lab-control-row { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+.lab-control-block { display: flex; flex-direction: column; gap: 10px; }
+.lab-picker-block { flex: 1; min-width: 240px; }
+.lab-ctrl-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: rgba(255,255,255,0.4);
+}
+.lab-combo .cbx { width: 100%; min-width: 0; }
+
+/* Mode toggle — same sliding-thumb mechanism as .sushi-toggle, own classes per page. */
+.lab-mode-toggle {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 3px;
+  width: fit-content;
+}
+.lab-mode-toggle::before {
+  content: '';
+  position: absolute;
+  top: 3px; bottom: 3px; left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 2px 8px rgba(0,0,0,0.3);
+  transition: transform 280ms var(--ease-out);
+  pointer-events: none;
+  z-index: 0;
+}
+.lab-mode-toggle:has(> *:nth-child(2).active)::before { transform: translateX(100%); }
+.lab-mode-btn {
+  position: relative;
+  z-index: 1;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.45);
+  padding: 7px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: color 0.28s var(--ease-out);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.lab-mode-btn.active { color: #fff; }
+.lab-mode-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
+
+.lab-inputs { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.lab-qty-label { display: flex; flex-direction: column; gap: 6px; }
+.lab-qty-fish {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.lab-qty-input {
+  width: 160px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.lab-qty-input:focus {
+  outline: none;
+  border-color: rgba(84,172,210,0.6);
+  box-shadow: 0 0 0 3px rgba(84,172,210,0.12);
+}
+.lab-ing-select { min-width: 180px; }
+
+.lab-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lab-result-card { display: flex; flex-direction: column; gap: 14px; }
+.lab-result-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lab-result-icon { width: 28px; height: 28px; image-rendering: pixelated; flex-shrink: 0; }
+.lab-result-name { font-size: 15px; font-weight: 700; }
+.lab-crafts-tag {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.lab-table { width: 100%; border-collapse: collapse; }
+.lab-table th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255,255,255,0.35);
+  font-weight: 700;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.lab-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.lab-ing-icon { width: 20px; height: 20px; image-rendering: pixelated; vertical-align: middle; margin-right: 6px; }
+.lab-row-given { background: rgba(84,172,210,0.08); }
+.lab-num { font-variant-numeric: tabular-nums; text-align: right; }
+.lab-dc-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.lab-output-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.15);
+}
+.lab-output-val { font-size: 20px; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; }
+.lab-output-label { font-size: 12px; color: var(--muted); }
 
 /* ── Vote tracker ─────────────────────────────────────────────────────────── */
 

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=54" />
+  <link rel="stylesheet" href="/static/style.css?v=55" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -19,11 +19,23 @@
       <nav class="nav-tabs">
         <a class="nav-tab" href="#home">Home</a>
         <a class="nav-tab" href="#prices">Prices</a>
-        <a class="nav-tab" href="#calculator">Calculator</a>
+        <div class="nav-dropdown">
+          <button type="button" class="nav-tab nav-dropdown-trigger" id="nav-calc-trigger"
+            aria-haspopup="true" aria-expanded="false" onclick="toggleNavDropdown(event)">
+            Calculators
+            <svg class="nav-dropdown-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+              <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="nav-dropdown-menu" id="nav-calc-menu" data-open="false">
+            <a class="nav-dropdown-item" href="#calculator">💰 Revenue Calculator</a>
+            <a class="nav-dropdown-item" href="#sushi">🍣 Sushi</a>
+            <a class="nav-dropdown-item" href="#lab">🧪 Lab Calculator</a>
+          </div>
+        </div>
         <a class="nav-tab" href="#ranks">Ranks</a>
         <a class="nav-tab" href="#graphs">Graphs</a>
         <a class="nav-tab" data-gated="true" href="#prestige">Prestige</a>
-        <a class="nav-tab" href="#sushi">Sushi</a>
         <a class="nav-tab" data-gated="true" href="#vote">Vote</a>
       </nav>
       <div class="header-actions">
@@ -566,6 +578,33 @@
       <div id="sushi-results"></div>
     </div>
 
+    <!-- ===== LAB CALCULATOR PAGE ===== -->
+    <div id="page-lab" class="page">
+      <div class="prestige-header">
+        <h2>🧪 Nexus Lab Calculator</h2>
+        <p class="prestige-intro">Pick a compound and work out craft ratios — enter a target output to see the ingredients you need, or enter what you have of one ingredient to see the rest and the yield.</p>
+      </div>
+
+      <section class="card card-overflow lab-controls">
+        <div class="lab-control-row">
+          <div class="lab-control-block lab-picker-block">
+            <span class="lab-ctrl-label">Compound</span>
+            <div id="lab-compound-select" class="lab-combo"></div>
+          </div>
+          <div class="lab-control-block">
+            <span class="lab-ctrl-label">Mode</span>
+            <div class="lab-mode-toggle">
+              <button class="lab-mode-btn active" data-mode="output" onclick="setLabMode('output')">I want an output amount</button>
+              <button class="lab-mode-btn" data-mode="input" onclick="setLabMode('input')">I have an ingredient amount</button>
+            </div>
+          </div>
+        </div>
+        <div id="lab-inputs" class="lab-inputs"></div>
+      </section>
+
+      <div id="lab-results"></div>
+    </div>
+
     <!-- ===== VOTE PAGE ===== -->
     <div id="page-vote" class="page">
       <div class="prestige-header">
@@ -583,6 +622,6 @@
   <script src="/static/ranks.js?v=1"></script>
   <script src="/static/combobox.js?v=1"></script>
   <script src="/static/dropdown.js?v=46"></script>
-  <script src="/static/app.js?v=55"></script>
+  <script src="/static/app.js?v=56"></script>
 </body>
 </html>

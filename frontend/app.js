@@ -13,6 +13,7 @@ let progressData = null;        // { snapshots:[ms], objectives:[...], inventory
 let progChartInstance = null;
 let progChartRange = 'all';     // '7' | '30' | 'all' — days of history shown in the Progress Over Time chart
 const INV_SIZE = 2304;          // items per inventory (mirrors backend INVENTORY_SIZE)
+const ITEMS_PER_DC = 54 * 64;   // 3456 items per double chest
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -122,19 +123,26 @@ function maybeShowFirstVisitPulse() {
 
 function getPage() {
   const hash = location.hash.replace('#', '') || 'home';
-  return ['home', 'prices', 'calculator', 'ranks', 'graphs', 'prestige', 'progress', 'sushi', 'vote'].includes(hash) ? hash : 'home';
+  return ['home', 'prices', 'calculator', 'ranks', 'graphs', 'prestige', 'progress', 'sushi', 'vote', 'lab'].includes(hash) ? hash : 'home';
 }
 
 const GATED_PAGES = new Set(['vote', 'prestige']);
+const CALC_PAGES = new Set(['calculator', 'sushi', 'lab']);
 
 function navigate() {
   const page = getPage();
+  closeNavDropdown();
   // The Progress tab was merged into Prestige — alias the old route/bookmarks.
   if (page === 'progress') { location.hash = '#prestige'; return; }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => {
     t.classList.toggle('active', t.getAttribute('href') === '#' + page);
+  });
+  const calcTrigger = document.getElementById('nav-calc-trigger');
+  if (calcTrigger) calcTrigger.classList.toggle('active', CALC_PAGES.has(page));
+  document.querySelectorAll('.nav-dropdown-item').forEach(a => {
+    a.classList.toggle('is-active', a.getAttribute('href') === '#' + page);
   });
   const el = document.getElementById('page-' + page);
   if (el) el.classList.add('active');
@@ -155,6 +163,9 @@ function navigate() {
   if (page === 'sushi') {
     renderSushi();
   }
+  if (page === 'lab') {
+    renderLab();
+  }
   if (page === 'vote') {
     renderVoting();
   }
@@ -172,6 +183,35 @@ function navigate() {
 
 window.addEventListener('hashchange', navigate);
 
+// ── Nav "Calculators" dropdown ────────────────────────────────────────────
+
+let navDropdownOpen = false;
+
+function toggleNavDropdown(e) {
+  e.stopPropagation();
+  navDropdownOpen = !navDropdownOpen;
+  const menu = document.getElementById('nav-calc-menu');
+  const trig = document.getElementById('nav-calc-trigger');
+  if (menu) menu.dataset.open = String(navDropdownOpen);
+  if (trig) trig.setAttribute('aria-expanded', String(navDropdownOpen));
+}
+
+function closeNavDropdown() {
+  if (!navDropdownOpen) return;
+  navDropdownOpen = false;
+  const menu = document.getElementById('nav-calc-menu');
+  const trig = document.getElementById('nav-calc-trigger');
+  if (menu) menu.dataset.open = 'false';
+  if (trig) trig.setAttribute('aria-expanded', 'false');
+}
+
+document.addEventListener('click', (e) => {
+  if (navDropdownOpen && !e.target.closest('.nav-dropdown')) closeNavDropdown();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && navDropdownOpen) closeNavDropdown();
+});
+
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
 async function init() {
@@ -182,6 +222,7 @@ async function init() {
   await loadTopStats();
   loadDashState();
   populateDashSelect();
+  populateLabSelect();
   renderPrestige();
   if (window.authUser && !window.authUser.guest) {
     await loadVoteState();       // server-backed vote timestamps (cross-device)
@@ -490,7 +531,7 @@ let priceDemand     = 1.0;   // dealer Sell rate (from /rates), applied before b
 let prestigeDemand  = 1.0;   // dealer Prestige rate
 let scoreDemand     = 1.0;   // dealer Score rate
 let dealerId        = 'custom';
-const DASH_DC = 54 * 64; // 3456 items per double chest
+const DASH_DC = ITEMS_PER_DC;
 
 // Chemical purity multipliers — Value/Progress/Score branches, level 0–3 (wiki: Companies#Purity).
 const PURITY_MULT = [1.00, 1.15, 1.30, 1.50];
@@ -1499,7 +1540,7 @@ function renderPrestigeCards() {
   if (!grid || !prestigeData.length) return;
   const progress = calcAllProgress();
   const reverseMap = buildReverseMap();
-  const DC = 54 * 64; // 3456 items per double chest
+  const DC = ITEMS_PER_DC;
 
   // crop_id → uploaded objective, for rate / ETA / status badge / chart focus.
   const objByCrop = {};
@@ -2417,6 +2458,162 @@ function renderSushi() {
 
   html += '</div>';
   el.innerHTML = html;
+}
+
+// ── Lab Calculator — Nexus compound ratio tool ─────────────────────────────────
+
+let labCombo = null;
+let labSelectedId = '';
+let labMode = 'output';   // 'output' | 'input'
+let labGivenIng = '';     // Input mode: which ingredient name the user has
+
+function populateLabSelect() {
+  const mount = document.getElementById('lab-compound-select');
+  if (!mount || !allCrops.length || labCombo) return;
+  labCombo = createCompoundCombobox({
+    mount,
+    grouped: true,
+    placeholder: 'Choose a compound…',
+    items: comboItems(c => c.recipe_type !== 'raw' && c.recipe && c.output_qty),
+    onSelect: (id) => { labSelectedId = id; renderLab(); },
+  });
+}
+
+function setLabMode(mode) {
+  labMode = mode;
+  document.querySelectorAll('.lab-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  labGivenIng = ''; // reset — avoids a stale selection from a differently-shaped recipe
+  renderLab();
+}
+
+function setLabGivenIngredient(name) {
+  labGivenIng = name;
+  renderLab();
+}
+
+// Output mode: user wants `targetOutput` units of the compound.
+function labCalcFromOutput(compound, targetOutput) {
+  const crafts = targetOutput / compound.output_qty;
+  const ingredients = Object.entries(compound.recipe).map(([name, perCraft]) => ({
+    name, perCraft, needed: (perCraft / compound.output_qty) * targetOutput,
+  }));
+  return { crafts, ingredients };
+}
+
+// Input mode: user has `givenQty` of ingredient `givenName`.
+function labCalcFromInput(compound, givenName, givenQty) {
+  const perCraftGiven = compound.recipe[givenName];
+  if (!perCraftGiven) return null;
+  const crafts = givenQty / perCraftGiven;
+  const ingredients = Object.entries(compound.recipe).map(([name, perCraft]) => ({
+    name, perCraft, needed: crafts * perCraft, given: name === givenName,
+  }));
+  return { crafts, ingredients, outputQty: crafts * compound.output_qty };
+}
+
+function labOutputInputHtml(value) {
+  return `<label class="lab-qty-label">
+    <span class="lab-qty-fish">Target output amount</span>
+    <input type="number" min="0" id="lab-qty-output" class="lab-qty-input"
+      value="${value || ''}" placeholder="e.g. 20000" oninput="renderLab()" />
+  </label>`;
+}
+
+function labInputInputHtml(compound, givenIng, value) {
+  const ingOptions = compound
+    ? Object.keys(compound.recipe).map(n => `<option value="${n}" ${n === givenIng ? 'selected' : ''}>${n}</option>`).join('')
+    : '';
+  return `<label class="lab-qty-label">
+      <span class="lab-qty-fish">I have (ingredient)</span>
+      <select id="lab-ing-select" class="lab-qty-input lab-ing-select"
+        onchange="setLabGivenIngredient(this.value)" ${compound ? '' : 'disabled'}>${ingOptions}</select>
+    </label>
+    <label class="lab-qty-label">
+      <span class="lab-qty-fish">Amount I have</span>
+      <input type="number" min="0" id="lab-qty-given" class="lab-qty-input"
+        value="${value || ''}" placeholder="e.g. 20000" oninput="renderLab()" ${compound ? '' : 'disabled'} />
+    </label>`;
+}
+
+function labResultCardHtml(compound, nameToCrop, crafts, ingredients, outputQty) {
+  const icon = (crop) => crop && crop.icon
+    ? `<img src="/static/icons/${crop.icon}?v=tp1" class="lab-ing-icon" alt="" />`
+    : `<span class="compound-emoji">${(crop && crop.emoji) || ''}</span>`;
+  const dc = (n) => `<span class="lab-dc-sub">${(n / ITEMS_PER_DC).toFixed(2)} DC</span>`;
+  const fmtQty = (n) => Math.round(n).toLocaleString();
+  const fmtCrafts = (n) => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+
+  const rows = ingredients.map(row => {
+    const crop = nameToCrop[row.name];
+    return `<tr class="${row.given ? 'lab-row-given' : ''}">
+      <td>${icon(crop)}${row.name}${row.given ? ' <em>(have)</em>' : ''}</td>
+      <td class="lab-num">${row.perCraft}× per craft</td>
+      <td class="lab-num">${fmtQty(row.needed)}${dc(row.needed)}</td>
+    </tr>`;
+  }).join('');
+
+  const compoundIcon = compound.icon
+    ? `<img src="/static/icons/${compound.icon}?v=tp1" class="lab-result-icon" alt="" />`
+    : `<span class="compound-emoji">${compound.emoji || ''}</span>`;
+
+  return `<div class="card lab-result-card">
+    <div class="lab-result-header">
+      ${compoundIcon}<span class="lab-result-name">${compound.name}</span>
+      <span class="lab-crafts-tag">${fmtCrafts(crafts)} crafts</span>
+    </div>
+    <table class="lab-table">
+      <thead><tr><th>Ingredient</th><th>Ratio</th><th>Needed</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${outputQty != null ? `<div class="lab-output-banner">
+      <span class="lab-output-val">${fmtQty(outputQty)}</span>
+      <span class="lab-output-label">${compound.name} produced ${dc(outputQty)}</span>
+    </div>` : ''}
+  </div>`;
+}
+
+function renderLab() {
+  const inputsEl  = document.getElementById('lab-inputs');
+  const resultsEl = document.getElementById('lab-results');
+  if (!inputsEl || !resultsEl) return;
+
+  const compound = allCrops.find(c => c.id === labSelectedId);
+
+  if (!compound) {
+    inputsEl.innerHTML = labMode === 'output'
+      ? labOutputInputHtml(0)
+      : labInputInputHtml(null, '', 0);
+    resultsEl.innerHTML = '<div class="card lab-empty">Choose a compound above to see its craft ratio.</div>';
+    return;
+  }
+
+  const nameToCrop = Object.fromEntries(allCrops.map(c => [c.name, c]));
+
+  if (labMode === 'output') {
+    const targetOutput = parseFloat(document.getElementById('lab-qty-output')?.value) || 0;
+    inputsEl.innerHTML = labOutputInputHtml(targetOutput);
+    if (targetOutput <= 0) {
+      resultsEl.innerHTML = '<div class="card lab-empty">Enter a target output amount above.</div>';
+      return;
+    }
+    const { crafts, ingredients } = labCalcFromOutput(compound, targetOutput);
+    resultsEl.innerHTML = labResultCardHtml(compound, nameToCrop, crafts, ingredients, null);
+    return;
+  }
+
+  // Input mode
+  const ingNames = Object.keys(compound.recipe);
+  if (!labGivenIng || !ingNames.includes(labGivenIng)) labGivenIng = ingNames[0];
+  const givenQty = parseFloat(document.getElementById('lab-qty-given')?.value) || 0;
+  inputsEl.innerHTML = labInputInputHtml(compound, labGivenIng, givenQty);
+
+  if (givenQty <= 0) {
+    resultsEl.innerHTML = '<div class="card lab-empty">Enter how much of the selected ingredient you have.</div>';
+    return;
+  }
+  const calc = labCalcFromInput(compound, labGivenIng, givenQty);
+  if (!calc) { resultsEl.innerHTML = '<div class="card lab-empty">—</div>'; return; }
+  resultsEl.innerHTML = labResultCardHtml(compound, nameToCrop, calc.crafts, calc.ingredients, calc.outputQty);
 }
 
 // ── Vote tracker ──────────────────────────────────────────────────────────────
