@@ -71,6 +71,7 @@ header {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 .logo-img {
   width: 28px;
@@ -82,16 +83,22 @@ header {
   align-items: center;
   gap: 12px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 .sync-status {
   font-size: 12px;
   color: var(--muted);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Nav tabs ── */
 .nav-tabs {
   display: flex;
   gap: 2px;
+  flex-shrink: 0;
 }
 .nav-tab {
   padding: 6px 16px;
