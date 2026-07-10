@@ -2162,23 +2162,26 @@ body.drawer-open { overflow: hidden; }
 .lab-mode-btn.active { color: #fff; }
 .lab-mode-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
 
-.lab-inputs { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-.lab-qty-label { display: flex; flex-direction: column; gap: 6px; }
-.lab-qty-fish {
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.5);
+/* Amount block: caption on top, then the field row (select? · number · unit). */
+.lab-inputs { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.lab-qty-cap {
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.7px;
+  color: rgba(255,255,255,0.4);
 }
+.lab-qty-field { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .lab-qty-input {
-  width: 160px;
+  width: 128px;
   background: rgba(0,0,0,0.25);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px;
   color: var(--text);
-  padding: 7px 10px;
-  font-size: 13px;
+  padding: 9px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   font-family: inherit;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -2187,110 +2190,89 @@ body.drawer-open { overflow: hidden; }
   border-color: rgba(84,172,210,0.6);
   box-shadow: 0 0 0 3px rgba(84,172,210,0.12);
 }
+.lab-qty-input:disabled { opacity: 0.4; }
 /* Native ingredient select — match the dark inputs, drop the OS chevron. */
 .lab-ing-select {
-  min-width: 180px;
+  min-width: 150px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 9px 30px 9px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8790' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 28px;
+  background-position: right 11px center;
 }
+/* DC ⇄ Items unit switch on the amount box. */
+.lab-unit-toggle { display: inline-flex; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+.lab-unit-toggle button {
+  background: none; border: none; color: var(--muted);
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  padding: 6px 13px; border-radius: 6px; cursor: pointer;
+  transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out);
+}
+.lab-unit-toggle button.active { background: rgba(255,255,255,0.1); color: #fff; }
+.lab-unit-toggle button:hover:not(.active) { color: rgba(255,255,255,0.75); }
 
-/* Result / preview cards are capped to a readable measure so numbers stay
-   next to their labels instead of sprawling across the whole viewport. */
-.lab-result-card, .lab-empty { max-width: 760px; }
+/* Result / empty cards capped to a comfortable measure. */
+.lab-result-card, .lab-empty { max-width: 620px; }
+.lab-empty { padding: 30px 20px; text-align: center; color: var(--muted); font-size: 13.5px; }
 
-.lab-empty {
-  padding: 32px 16px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
+/* .card has no built-in padding — give the result card its own. */
+.lab-result-card { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; }
+.lab-result-header { display: flex; align-items: center; gap: 12px; }
+.lab-result-icon { width: 32px; height: 32px; image-rendering: pixelated; flex-shrink: 0; }
+.lab-result-heading { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lab-result-name { font-size: 16px; font-weight: 700; }
+.lab-recipe-line {
+  font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.lab-hint { color: var(--muted); font-size: 13.5px; padding: 4px 0 2px; }
 
-/* .card has no built-in padding — give the result card its own so numbers
-   don't run into the edges. */
-.lab-result-card { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
-.lab-result-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.lab-result-icon { width: 30px; height: 30px; image-rendering: pixelated; flex-shrink: 0; }
-.lab-result-heading { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.lab-result-name { font-size: 15px; font-weight: 700; }
-.lab-recipe-line { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.lab-profit-tag {
-  margin-left: auto;
-  font-size: 15px;
-  font-weight: 800;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+/* "Farm this" / "Also farm" ingredient list. */
+.lab-farm { display: flex; flex-direction: column; }
+.lab-farm-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.9px; text-transform: uppercase;
+  color: rgba(255,255,255,0.4); padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.lab-pos { color: var(--green); }
-.lab-neg { color: #e06a5c; }
-.lab-amt-note {
-  display: block;
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 2px;
-  font-variant-numeric: tabular-nums;
+.lab-ing-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.lab-have { color: #6cc1e6; font-weight: 600; }
+.lab-ing-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lab-ing-icon { width: 24px; height: 24px; image-rendering: pixelated; flex-shrink: 0; }
+.lab-ing-name { font-weight: 600; font-size: 15.5px; }
+.lab-ing-ratio { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.lab-ing-amt { display: flex; flex-direction: column; align-items: flex-end; text-align: right; flex-shrink: 0; }
+.lab-amt-main { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.lab-amt-unit { font-size: 12px; color: var(--muted); font-weight: 600; margin-left: 4px; }
+.lab-amt-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lab-ing-empty { padding: 14px 0; color: var(--muted); font-size: 13.5px; }
 
-/* Economics footer — input cost / output value / net, reusing live prices. */
-.lab-econ {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  padding: 12px 0 2px;
-  border-top: 1px solid rgba(255,255,255,0.07);
+.lab-leftover {
+  font-size: 13px; color: var(--muted);
+  background: rgba(227,179,65,0.07); border: 1px solid rgba(227,179,65,0.22);
+  border-radius: 10px; padding: 10px 14px;
 }
-.lab-econ-item { display: flex; flex-direction: column; gap: 3px; }
-.lab-econ-k {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255,255,255,0.4);
-  font-weight: 700;
-}
-.lab-econ-v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.lab-hint { font-size: 12px; color: var(--muted); font-style: italic; }
+.lab-leftover strong { color: var(--yellow); font-weight: 700; }
 
-/* Table scrolls inside its own box on very narrow screens rather than
-   spilling out of the card. */
-.lab-table-wrap { overflow-x: auto; }
-.lab-table { width: 100%; border-collapse: collapse; }
-.lab-table th {
-  text-align: left;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255,255,255,0.35);
-  font-weight: 700;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+/* The answer: how much you end up with. Full-bleed footer. */
+.lab-produce {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin: 4px -20px -18px; padding: 16px 20px;
+  border-top: 1px solid rgba(63,185,80,0.22);
+  background: linear-gradient(160deg, rgba(63,185,80,0.09), rgba(63,185,80,0.02));
 }
-.lab-table td { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-/* Ingredient column absorbs the slack so the two numeric columns group at the
-   right edge (read: label · amount · cost) instead of sprawling apart. */
-.lab-table th:first-child, .lab-table td:first-child { width: 100%; }
-.lab-table th:not(:first-child), .lab-table td:not(:first-child) { padding-left: 32px; white-space: nowrap; }
-.lab-ing-icon { width: 20px; height: 20px; image-rendering: pixelated; vertical-align: middle; margin-right: 6px; }
-.lab-row-given { background: rgba(84,172,210,0.07); }
-.lab-num { font-variant-numeric: tabular-nums; text-align: right; }
-.lab-dc-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-.lab-output-banner {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-  /* Full-bleed footer: bleed past the card's padding to the rounded edges. */
-  margin: 4px -20px -16px;
-  padding: 12px 20px;
-  border-top: 1px solid rgba(255,255,255,0.07);
-  background: rgba(0,0,0,0.15);
-}
-.lab-output-val { font-size: 20px; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; }
-.lab-output-label { font-size: 12px; color: var(--muted); }
+.lab-produce-val { font-size: 30px; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; line-height: 1; }
+.lab-produce-meta { display: flex; flex-direction: column; gap: 2px; font-weight: 700; font-size: 15px; }
+.lab-produce-sub { font-size: 12.5px; color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 
 /* ── Vote tracker ─────────────────────────────────────────────────────────── */
 
