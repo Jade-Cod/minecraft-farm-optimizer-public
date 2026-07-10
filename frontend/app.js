@@ -2465,7 +2465,6 @@ function renderSushi() {
 let labCombo = null;
 let labSelectedId = '';
 let labMode = 'output';   // 'output' | 'input'
-let labGivenIng = '';     // Input mode: which ingredient name the user has
 let labUnit = 'dc';       // 'dc' | 'items' — how the amount box is read AND shown
 
 function populateLabSelect() {
@@ -2483,27 +2482,20 @@ function populateLabSelect() {
 function setLabMode(mode) {
   labMode = mode;
   document.querySelectorAll('.lab-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-  labGivenIng = ''; // reset — avoids a stale selection from a differently-shaped recipe
   renderLab();
 }
 
-function setLabGivenIngredient(name) {
-  labGivenIng = name;
-  renderLabResults();
-}
-
-// Flip the amount unit and convert the typed value so the real quantity is
+// Flip the amount unit and convert every typed value so the real quantity is
 // unchanged (20 DC ⇄ 69,120 items). A deliberate click, so a full rebuild is fine.
 function setLabUnit(unit) {
   if (unit === labUnit) return;
-  const id = labMode === 'output' ? 'lab-qty-output' : 'lab-qty-given';
-  const el = document.getElementById(id);
-  const v = parseFloat(el?.value);
-  if (el && Number.isFinite(v) && v > 0) {
-    el.value = unit === 'items'
-      ? Math.round(v * ITEMS_PER_DC)
-      : +(v / ITEMS_PER_DC).toFixed(3);
-  }
+  const convert = (el) => {
+    const v = parseFloat(el?.value);
+    if (!el || !Number.isFinite(v) || v <= 0) return;
+    el.value = unit === 'items' ? Math.round(v * ITEMS_PER_DC) : +(v / ITEMS_PER_DC).toFixed(3);
+  };
+  if (labMode === 'output') convert(document.getElementById('lab-qty-output'));
+  else document.querySelectorAll('#lab-inputs .lab-have-input').forEach(convert);
   labUnit = unit;
   renderLab();
 }
@@ -2525,18 +2517,23 @@ function labCalcFromOutput(compound, targetItems) {
   return { crafts, outputItems, rows, overshoot: outputItems - targetItems };
 }
 
-// Input mode: user has `givenItems` of `givenName` — round crafts DOWN (the pile
-// caps whole crafts) and surface the leftover.
-function labCalcFromInput(compound, givenName, givenItems) {
-  const perCraftGiven = compound.recipe[givenName];
-  if (!perCraftGiven) return null;
-  const crafts = Math.floor(givenItems / perCraftGiven);
-  const rows = Object.entries(compound.recipe).map(([name, perCraft]) => ({
-    name, perCraft, items: crafts * perCraft,
-    status: name === givenName ? 'have' : 'need',
-    have: name === givenName ? givenItems : undefined,
-    leftover: name === givenName ? givenItems - crafts * perCraft : undefined,
-  }));
+// Input mode: `haves` maps ingredient name → items the user has (only the
+// ingredients they filled in). Whole crafts are capped by whichever filled
+// ingredient runs out first (the bottleneck); unfilled ingredients are farmed.
+// One ingredient filled → identical to the old single-ingredient behaviour.
+function labCalcFromInputs(compound, haves) {
+  const haveNames = Object.keys(haves);
+  if (!haveNames.length) return null;
+  const crafts = Math.min(...haveNames.map(n => Math.floor(haves[n] / compound.recipe[n])));
+  const rows = Object.entries(compound.recipe).map(([name, perCraft]) => {
+    const has = name in haves;
+    return {
+      name, perCraft, items: crafts * perCraft,
+      status: has ? 'have' : 'need',
+      have: has ? haves[name] : undefined,
+      leftover: has ? haves[name] - crafts * perCraft : undefined,
+    };
+  });
   return { crafts, outputItems: crafts * compound.output_qty, rows };
 }
 
@@ -2558,18 +2555,25 @@ function labOutputInputHtml(value) {
     </div>`;
 }
 
-function labInputInputHtml(compound, givenIng, value) {
-  const ingOptions = compound
-    ? Object.keys(compound.recipe).map(n => `<option value="${n}" ${n === givenIng ? 'selected' : ''}>${n}</option>`).join('')
-    : '';
-  return `<span class="lab-qty-cap">I have</span>
-    <div class="lab-qty-field">
-      <select id="lab-ing-select" class="lab-ing-select"
-        onchange="setLabGivenIngredient(this.value)" ${compound ? '' : 'disabled'}>${ingOptions}</select>
-      <input type="number" min="0" inputmode="decimal" id="lab-qty-given" class="lab-qty-input"
-        value="${value || ''}" placeholder="${labPlaceholder()}" oninput="renderLabResults()" ${compound ? '' : 'disabled'} />
+// One row per ingredient: icon + name on the left, its own amount field on the
+// right. Fill any subset — leave the rest blank to have them farmed for you.
+function labInputInputHtml(compound, nameToCrop, values) {
+  const rows = compound
+    ? Object.keys(compound.recipe).map((name, i) => {
+        const crop = nameToCrop[name];
+        return `<div class="lab-have-row">
+          <span class="lab-have-left">${labIconHtml(crop, 'lab-ing-icon')}<span class="lab-ing-name">${name}</span></span>
+          <input type="number" min="0" inputmode="decimal" id="lab-have-${i}" data-ing="${name}"
+            class="lab-qty-input lab-have-input" value="${values[name] || ''}"
+            placeholder="${labPlaceholder()}" oninput="renderLabResults()" />
+        </div>`;
+      }).join('')
+    : `<div class="lab-hint">Choose a compound to fill in what you have.</div>`;
+  return `<div class="lab-have-head">
+      <span class="lab-qty-cap">I have</span>
       ${labUnitToggleHtml()}
-    </div>`;
+    </div>
+    <div class="lab-have-list">${rows}</div>`;
 }
 
 // ── Result card ──────────────────────────────────────────────────────────────
@@ -2599,7 +2603,7 @@ function labAmountHtml(items) {
 function labCardHtml(compound, nameToCrop, view) {
   const { rows, crafts, outputItems, overshoot = 0, mode } = view;
   const needRows = rows.filter(r => r.status === 'need');
-  const haveRow  = rows.find(r => r.status === 'have');
+  const haveRows = rows.filter(r => r.status === 'have');
 
   const ingList = needRows.map(row => {
     const crop = nameToCrop[row.name];
@@ -2611,10 +2615,10 @@ function labCardHtml(compound, nameToCrop, view) {
 
   const listLabel = mode === 'input' ? 'Also farm' : 'Farm this';
 
-  let leftover = '';
-  if (haveRow && haveRow.leftover > 0) {
-    leftover = `<div class="lab-leftover">Uses ${labFmtItems(haveRow.have - haveRow.leftover)} of your ${labFmtItems(haveRow.have)} ${haveRow.name} — <strong>${labFmtItems(haveRow.leftover)} left over</strong>.</div>`;
-  }
+  const leftover = haveRows
+    .filter(r => r.leftover > 0)
+    .map(r => `<div class="lab-leftover">Uses ${labFmtItems(r.have - r.leftover)} of your ${labFmtItems(r.have)} ${r.name} — <strong>${labFmtItems(r.leftover)} left over</strong>.</div>`)
+    .join('');
 
   const overNote = overshoot > 0 ? ` · ${labFmtItems(overshoot)} over target` : '';
 
@@ -2642,7 +2646,7 @@ function labCardHtml(compound, nameToCrop, view) {
 function labPreviewCard(compound) {
   const prompt = labMode === 'output'
     ? 'Enter how much you want to make above.'
-    : 'Enter how much of the ingredient you have above.';
+    : 'Enter how much of any ingredient you have above.';
   return `<div class="card lab-result-card">
     <div class="lab-result-header">
       ${labIconHtml(compound, 'lab-result-icon')}
@@ -2674,12 +2678,11 @@ function renderLabInputs() {
     inputsEl.innerHTML = labOutputInputHtml(cur);
     return;
   }
-  if (compound) {
-    const ingNames = Object.keys(compound.recipe);
-    if (!labGivenIng || !ingNames.includes(labGivenIng)) labGivenIng = ingNames[0];
-  }
-  const cur = document.getElementById('lab-qty-given')?.value || '';
-  inputsEl.innerHTML = labInputInputHtml(compound, labGivenIng, cur);
+  // Read the per-ingredient values back so they survive a shape rebuild.
+  const prev = {};
+  inputsEl.querySelectorAll('.lab-have-input').forEach(el => { if (el.dataset.ing) prev[el.dataset.ing] = el.value; });
+  const nameToCrop = Object.fromEntries(allCrops.map(c => [c.name, c]));
+  inputsEl.innerHTML = labInputInputHtml(compound, nameToCrop, prev);
 }
 
 // Recompute + repaint ONLY the results card. Safe on every keystroke since it
@@ -2703,15 +2706,19 @@ function renderLabResults() {
     return;
   }
 
-  const ingNames = Object.keys(compound.recipe);
-  if (!labGivenIng || !ingNames.includes(labGivenIng)) labGivenIng = ingNames[0];
-  const raw = parseFloat(document.getElementById('lab-qty-given')?.value) || 0;
-  if (raw <= 0) { resultsEl.innerHTML = labPreviewCard(compound); return; }
-  const calc = labCalcFromInput(compound, labGivenIng, labToItems(raw));
-  if (!calc) { resultsEl.innerHTML = '<div class="card lab-empty">—</div>'; return; }
+  // Collect what the user filled in (any subset of ingredients), in items.
+  const haves = {};
+  document.querySelectorAll('#lab-inputs .lab-have-input').forEach(el => {
+    const v = parseFloat(el.value);
+    if (el.dataset.ing && Number.isFinite(v) && v > 0) haves[el.dataset.ing] = labToItems(v);
+  });
+  if (!Object.keys(haves).length) { resultsEl.innerHTML = labPreviewCard(compound); return; }
+  const calc = labCalcFromInputs(compound, haves);
   if (calc.crafts < 1) {
-    const need = compound.recipe[labGivenIng];
-    resultsEl.innerHTML = `<div class="card lab-empty">Not enough yet — one craft of ${compound.name} needs ${need} ${labGivenIng}. Add more to see a result.</div>`;
+    // Name the bottleneck: the filled ingredient you have the fewest crafts' worth of.
+    const short = Object.keys(haves).reduce((a, b) =>
+      haves[a] / compound.recipe[a] <= haves[b] / compound.recipe[b] ? a : b);
+    resultsEl.innerHTML = `<div class="card lab-empty">Not enough yet — one craft of ${compound.name} needs ${compound.recipe[short]} ${short}. Add more to see a result.</div>`;
     return;
   }
   resultsEl.innerHTML = labCardHtml(compound, nameToCrop, { ...calc, mode: 'input' });
