@@ -131,6 +131,70 @@ header {
   box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 2px 8px rgba(0,0,0,0.25);
 }
 
+/* ── Nav "Calculators" dropdown (from-scratch, not the .ui-select/.ui-menu widget) ── */
+.nav-dropdown { position: relative; flex-shrink: 0; }
+.nav-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  font-family: inherit;
+}
+.nav-dropdown-caret {
+  width: 9px;
+  height: 5px;
+  flex-shrink: 0;
+  opacity: 0.55;
+  transition: transform 0.18s cubic-bezier(0.23,1,0.32,1);
+}
+.nav-dropdown-trigger[aria-expanded="true"] .nav-dropdown-caret { transform: rotate(180deg); }
+.nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 150;
+  min-width: 190px;
+  padding: 4px;
+  background: rgba(26,26,30,0.98);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.5);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.96);
+  transform-origin: top left;
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0s linear 0.12s;
+}
+.nav-dropdown-menu[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+  transition: opacity 0.18s cubic-bezier(0.23,1,0.32,1), transform 0.18s cubic-bezier(0.23,1,0.32,1), visibility 0s;
+}
+.nav-dropdown-item {
+  display: block;
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.12s ease;
+}
+.nav-dropdown-item:hover { background: rgba(255,255,255,0.09); }
+.nav-dropdown-item.is-active { color: var(--blue); background: rgba(84,172,210,0.12); }
+@media (max-width: 700px) {
+  .nav-dropdown-menu { left: auto; right: 0; min-width: 160px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-dropdown-menu, .nav-dropdown-menu[data-open="true"] {
+    transform: none;
+    transition: opacity 0.12s ease, visibility 0s;
+  }
+}
+
 /* ── Main ── */
 main {
   max-width: 1200px;
@@ -2066,6 +2130,163 @@ body.drawer-open { overflow: hidden; }
 }
 .sushi-mat-sub { display: block; }
 .sushi-mat-farmed { color: #4ade80; font-size: 9px; }
+
+/* ── Lab Calculator — Nexus compound ratio tool ──────────────────────────── */
+.lab-controls {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.lab-control-row { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+.lab-control-block { display: flex; flex-direction: column; gap: 10px; }
+.lab-picker-block { flex: 1; min-width: 240px; }
+.lab-ctrl-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: rgba(255,255,255,0.4);
+}
+.lab-combo .cbx { width: 100%; min-width: 0; }
+
+/* Mode toggle — same sliding-thumb mechanism as .sushi-toggle, own classes per page. */
+.lab-mode-toggle {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 3px;
+  width: fit-content;
+}
+.lab-mode-toggle::before {
+  content: '';
+  position: absolute;
+  top: 3px; bottom: 3px; left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 2px 8px rgba(0,0,0,0.3);
+  transition: transform 280ms var(--ease-out);
+  pointer-events: none;
+  z-index: 0;
+}
+.lab-mode-toggle:has(> *:nth-child(2).active)::before { transform: translateX(100%); }
+.lab-mode-btn {
+  position: relative;
+  z-index: 1;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.45);
+  padding: 7px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: color 0.28s var(--ease-out);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.lab-mode-btn.active { color: #fff; }
+.lab-mode-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
+
+/* Amount block: caption on top, then the field row (select? · number · unit). */
+.lab-inputs { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.lab-qty-cap {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: rgba(255,255,255,0.4);
+}
+.lab-qty-field { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lab-qty-input {
+  width: 128px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 9px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.lab-qty-input:focus {
+  outline: none;
+  border-color: rgba(84,172,210,0.6);
+  box-shadow: 0 0 0 3px rgba(84,172,210,0.12);
+}
+.lab-qty-input:disabled { opacity: 0.4; }
+
+/* Input mode: one row per ingredient — icon + name, then its own amount field. */
+.lab-have-head { display: flex; align-items: center; gap: 16px; justify-content: space-between; width: 100%; max-width: 400px; }
+.lab-have-list { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 400px; }
+.lab-have-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.lab-have-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lab-have-input { width: 120px; flex-shrink: 0; }
+/* DC ⇄ Items unit switch on the amount box. */
+.lab-unit-toggle { display: inline-flex; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+.lab-unit-toggle button {
+  background: none; border: none; color: var(--muted);
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  padding: 6px 13px; border-radius: 6px; cursor: pointer;
+  transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out);
+}
+.lab-unit-toggle button.active { background: rgba(255,255,255,0.1); color: #fff; }
+.lab-unit-toggle button:hover:not(.active) { color: rgba(255,255,255,0.75); }
+
+/* Result / empty cards capped to a comfortable measure. */
+.lab-result-card, .lab-empty { max-width: 620px; }
+.lab-empty { padding: 30px 20px; text-align: center; color: var(--muted); font-size: 13.5px; }
+
+/* .card has no built-in padding — give the result card its own. */
+.lab-result-card { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; }
+.lab-result-header { display: flex; align-items: center; gap: 12px; }
+.lab-result-icon { width: 32px; height: 32px; image-rendering: pixelated; flex-shrink: 0; }
+.lab-result-heading { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lab-result-name { font-size: 16px; font-weight: 700; }
+.lab-recipe-line {
+  font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lab-hint { color: var(--muted); font-size: 13.5px; padding: 4px 0 2px; }
+
+/* "Farm this" / "Also farm" ingredient list. */
+.lab-farm { display: flex; flex-direction: column; }
+.lab-farm-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.9px; text-transform: uppercase;
+  color: rgba(255,255,255,0.4); padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.lab-ing-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.lab-ing-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lab-ing-icon { width: 24px; height: 24px; image-rendering: pixelated; flex-shrink: 0; }
+.lab-ing-name { font-weight: 600; font-size: 15.5px; }
+.lab-ing-ratio { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.lab-ing-amt { display: flex; flex-direction: column; align-items: flex-end; text-align: right; flex-shrink: 0; }
+.lab-amt-main { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.lab-amt-unit { font-size: 12px; color: var(--muted); font-weight: 600; margin-left: 4px; }
+.lab-amt-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lab-ing-empty { padding: 14px 0; color: var(--muted); font-size: 13.5px; }
+/* Input mode: an ingredient already fully covered by what you have. */
+.lab-ing-done { font-size: 13px; font-weight: 700; color: var(--green); flex-shrink: 0; }
+
+/* The answer: how much you end up with. Full-bleed footer. */
+.lab-produce {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin: 4px -20px -18px; padding: 16px 20px;
+  border-top: 1px solid rgba(63,185,80,0.22);
+  background: linear-gradient(160deg, rgba(63,185,80,0.09), rgba(63,185,80,0.02));
+}
+.lab-produce-val { font-size: 30px; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; line-height: 1; }
+.lab-produce-meta { display: flex; flex-direction: column; gap: 2px; font-weight: 700; font-size: 15px; }
+.lab-produce-sub { font-size: 12.5px; color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 
 /* ── Vote tracker ─────────────────────────────────────────────────────────── */
 

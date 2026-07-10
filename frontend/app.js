@@ -13,6 +13,7 @@ let progressData = null;        // { snapshots:[ms], objectives:[...], inventory
 let progChartInstance = null;
 let progChartRange = 'all';     // '7' | '30' | 'all' — days of history shown in the Progress Over Time chart
 const INV_SIZE = 2304;          // items per inventory (mirrors backend INVENTORY_SIZE)
+const ITEMS_PER_DC = 54 * 64;   // 3456 items per double chest
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -122,19 +123,26 @@ function maybeShowFirstVisitPulse() {
 
 function getPage() {
   const hash = location.hash.replace('#', '') || 'home';
-  return ['home', 'prices', 'calculator', 'ranks', 'graphs', 'prestige', 'progress', 'sushi', 'vote'].includes(hash) ? hash : 'home';
+  return ['home', 'prices', 'calculator', 'ranks', 'graphs', 'prestige', 'progress', 'sushi', 'vote', 'lab'].includes(hash) ? hash : 'home';
 }
 
 const GATED_PAGES = new Set(['vote', 'prestige']);
+const CALC_PAGES = new Set(['calculator', 'sushi', 'lab']);
 
 function navigate() {
   const page = getPage();
+  closeNavDropdown();
   // The Progress tab was merged into Prestige — alias the old route/bookmarks.
   if (page === 'progress') { location.hash = '#prestige'; return; }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => {
     t.classList.toggle('active', t.getAttribute('href') === '#' + page);
+  });
+  const calcTrigger = document.getElementById('nav-calc-trigger');
+  if (calcTrigger) calcTrigger.classList.toggle('active', CALC_PAGES.has(page));
+  document.querySelectorAll('.nav-dropdown-item').forEach(a => {
+    a.classList.toggle('is-active', a.getAttribute('href') === '#' + page);
   });
   const el = document.getElementById('page-' + page);
   if (el) el.classList.add('active');
@@ -155,6 +163,9 @@ function navigate() {
   if (page === 'sushi') {
     renderSushi();
   }
+  if (page === 'lab') {
+    renderLab();
+  }
   if (page === 'vote') {
     renderVoting();
   }
@@ -172,6 +183,35 @@ function navigate() {
 
 window.addEventListener('hashchange', navigate);
 
+// ── Nav "Calculators" dropdown ────────────────────────────────────────────
+
+let navDropdownOpen = false;
+
+function toggleNavDropdown(e) {
+  e.stopPropagation();
+  navDropdownOpen = !navDropdownOpen;
+  const menu = document.getElementById('nav-calc-menu');
+  const trig = document.getElementById('nav-calc-trigger');
+  if (menu) menu.dataset.open = String(navDropdownOpen);
+  if (trig) trig.setAttribute('aria-expanded', String(navDropdownOpen));
+}
+
+function closeNavDropdown() {
+  if (!navDropdownOpen) return;
+  navDropdownOpen = false;
+  const menu = document.getElementById('nav-calc-menu');
+  const trig = document.getElementById('nav-calc-trigger');
+  if (menu) menu.dataset.open = 'false';
+  if (trig) trig.setAttribute('aria-expanded', 'false');
+}
+
+document.addEventListener('click', (e) => {
+  if (navDropdownOpen && !e.target.closest('.nav-dropdown')) closeNavDropdown();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && navDropdownOpen) closeNavDropdown();
+});
+
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
 async function init() {
@@ -182,6 +222,7 @@ async function init() {
   await loadTopStats();
   loadDashState();
   populateDashSelect();
+  populateLabSelect();
   renderPrestige();
   if (window.authUser && !window.authUser.guest) {
     await loadVoteState();       // server-backed vote timestamps (cross-device)
@@ -494,7 +535,7 @@ let priceDemand     = 1.0;   // dealer Sell rate (from /rates), applied before b
 let prestigeDemand  = 1.0;   // dealer Prestige rate
 let scoreDemand     = 1.0;   // dealer Score rate
 let dealerId        = 'custom';
-const DASH_DC = 54 * 64; // 3456 items per double chest
+const DASH_DC = ITEMS_PER_DC;
 
 // Chemical purity multipliers — Value/Progress/Score branches, level 0–3 (wiki: Companies#Purity).
 const PURITY_MULT = [1.00, 1.15, 1.30, 1.50];
@@ -1503,7 +1544,7 @@ function renderPrestigeCards() {
   if (!grid || !prestigeData.length) return;
   const progress = calcAllProgress();
   const reverseMap = buildReverseMap();
-  const DC = 54 * 64; // 3456 items per double chest
+  const DC = ITEMS_PER_DC;
 
   // crop_id → uploaded objective, for rate / ETA / status badge / chart focus.
   const objByCrop = {};
@@ -2421,6 +2462,278 @@ function renderSushi() {
 
   html += '</div>';
   el.innerHTML = html;
+}
+
+// ── Lab Calculator — Nexus compound ratio tool ─────────────────────────────────
+
+let labCombo = null;
+let labSelectedId = '';
+let labMode = 'output';   // 'output' | 'input'
+let labUnit = 'dc';       // 'dc' | 'items' — how the amount box is read AND shown
+
+function populateLabSelect() {
+  const mount = document.getElementById('lab-compound-select');
+  if (!mount || !allCrops.length || labCombo) return;
+  labCombo = createCompoundCombobox({
+    mount,
+    grouped: true,
+    placeholder: 'Choose a compound…',
+    items: comboItems(c => c.recipe_type !== 'raw' && c.recipe && c.output_qty),
+    onSelect: (id) => { labSelectedId = id; renderLab(); },
+  });
+}
+
+function setLabMode(mode) {
+  labMode = mode;
+  document.querySelectorAll('.lab-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  renderLab();
+}
+
+// Flip the amount unit and convert every typed value so the real quantity is
+// unchanged (20 DC ⇄ 69,120 items). A deliberate click, so a full rebuild is fine.
+function setLabUnit(unit) {
+  if (unit === labUnit) return;
+  const convert = (el) => {
+    const v = parseFloat(el?.value);
+    if (!el || !Number.isFinite(v) || v <= 0) return;
+    el.value = unit === 'items' ? Math.round(v * ITEMS_PER_DC) : +(v / ITEMS_PER_DC).toFixed(3);
+  };
+  if (labMode === 'output') convert(document.getElementById('lab-qty-output'));
+  else document.querySelectorAll('#lab-inputs .lab-have-input').forEach(convert);
+  labUnit = unit;
+  renderLab();
+}
+
+// The amount box is read in whatever unit is selected; math runs in items.
+function labToItems(qty) { return labUnit === 'dc' ? qty * ITEMS_PER_DC : qty; }
+
+// Craft math is integer-honest: you can't run a fraction of a craft, so a batch
+// is always whole crafts. Everything below is in ITEMS; the UI converts to DCs.
+
+// Output mode: user wants at least `targetItems` — round crafts UP so the plan
+// reaches the target, and report the real (possibly higher) output.
+function labCalcFromOutput(compound, targetItems) {
+  const crafts = Math.ceil(targetItems / compound.output_qty);
+  const outputItems = crafts * compound.output_qty;
+  const rows = Object.entries(compound.recipe).map(([name, perCraft]) => ({
+    name, perCraft, items: crafts * perCraft, status: 'need',
+  }));
+  return { crafts, outputItems, rows, overshoot: outputItems - targetItems };
+}
+
+// Input mode: `haves` maps ingredient name → items the user has (only the
+// ingredients they filled in). Goal: craft EVERYTHING you have into the final
+// product with nothing left over. So run enough crafts to consume the pile that
+// demands the most crafts (round UP so it's fully used), then top every other
+// ingredient up to match — telling the user how much MORE to farm of each.
+function labCalcFromInputs(compound, haves) {
+  const haveNames = Object.keys(haves);
+  if (!haveNames.length) return null;
+  const crafts = Math.max(...haveNames.map(n => Math.ceil(haves[n] / compound.recipe[n])));
+  const rows = Object.entries(compound.recipe).map(([name, perCraft]) => {
+    const have = haves[name] || 0;
+    const needed = crafts * perCraft;
+    return { name, perCraft, needed, have, farmMore: needed - have, filled: name in haves };
+  });
+  return { crafts, outputItems: crafts * compound.output_qty, rows };
+}
+
+// ── Input controls ──────────────────────────────────────────────────────────
+function labUnitToggleHtml() {
+  return `<div class="lab-unit-toggle" role="group" aria-label="Amount unit">
+      <button type="button" class="${labUnit === 'dc' ? 'active' : ''}" onclick="setLabUnit('dc')">DCs</button>
+      <button type="button" class="${labUnit === 'items' ? 'active' : ''}" onclick="setLabUnit('items')">Items</button>
+    </div>`;
+}
+const labPlaceholder = () => labUnit === 'dc' ? 'e.g. 20' : 'e.g. 69120';
+
+function labOutputInputHtml(value) {
+  return `<span class="lab-qty-cap">I want to make</span>
+    <div class="lab-qty-field">
+      <input type="number" min="0" inputmode="decimal" id="lab-qty-output" class="lab-qty-input"
+        value="${value || ''}" placeholder="${labPlaceholder()}" oninput="renderLabResults()" />
+      ${labUnitToggleHtml()}
+    </div>`;
+}
+
+// One row per ingredient: icon + name on the left, its own amount field on the
+// right. Fill any subset — leave the rest blank to have them farmed for you.
+function labInputInputHtml(compound, nameToCrop, values) {
+  const rows = compound
+    ? Object.keys(compound.recipe).map((name, i) => {
+        const crop = nameToCrop[name];
+        return `<div class="lab-have-row">
+          <span class="lab-have-left">${labIconHtml(crop, 'lab-ing-icon')}<span class="lab-ing-name">${name}</span></span>
+          <input type="number" min="0" inputmode="decimal" id="lab-have-${i}" data-ing="${name}"
+            class="lab-qty-input lab-have-input" value="${values[name] || ''}"
+            placeholder="${labPlaceholder()}" oninput="renderLabResults()" />
+        </div>`;
+      }).join('')
+    : `<div class="lab-hint">Choose a compound to fill in what you have.</div>`;
+  return `<div class="lab-have-head">
+      <span class="lab-qty-cap">I have</span>
+      ${labUnitToggleHtml()}
+    </div>
+    <div class="lab-have-list">${rows}</div>`;
+}
+
+// ── Result card ──────────────────────────────────────────────────────────────
+const labFmtItems = (n) => Math.round(n).toLocaleString();
+const labFmtDc = (n) => (n / ITEMS_PER_DC).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+function labIconHtml(crop, cls) {
+  return crop && crop.icon
+    ? `<img src="/static/icons/${crop.icon}?v=tp1" class="${cls}" alt="" />`
+    : `<span class="compound-emoji">${(crop && crop.emoji) || ''}</span>`;
+}
+
+// "3× Betronium  +  3× Wheatium  →  2× Whearootinide"
+function labRecipeLine(compound) {
+  const parts = Object.entries(compound.recipe).map(([n, q]) => `${q}× ${n}`).join('  +  ');
+  return `${parts}  →  ${compound.output_qty}× ${compound.name}`;
+}
+
+// An item count shown with the active unit as the headline and the other beneath.
+function labAmountHtml(items) {
+  return labUnit === 'dc'
+    ? `<span class="lab-amt-main">${labFmtDc(items)}<span class="lab-amt-unit">DC</span></span><span class="lab-amt-sub">${labFmtItems(items)} items</span>`
+    : `<span class="lab-amt-main">${labFmtItems(items)}</span><span class="lab-amt-sub">${labFmtDc(items)} DC</span>`;
+}
+
+function labResultHeaderHtml(compound) {
+  return `<div class="lab-result-header">
+    ${labIconHtml(compound, 'lab-result-icon')}
+    <div class="lab-result-heading">
+      <span class="lab-result-name">${compound.name}</span>
+      <span class="lab-recipe-line">${labRecipeLine(compound)}</span>
+    </div>
+  </div>`;
+}
+
+function labProduceHtml(compound, crafts, outputItems, extraNote = '') {
+  return `<div class="lab-produce">
+    <span class="lab-produce-val">${labFmtItems(outputItems)}</span>
+    <span class="lab-produce-meta">${compound.name}<span class="lab-produce-sub">${crafts.toLocaleString()} craft${crafts === 1 ? '' : 's'} · ${labFmtDc(outputItems)} DC${extraNote}</span></span>
+  </div>`;
+}
+
+// Output mode: "Farm this" — the full ingredient amounts a target needs.
+// view: { rows, crafts, outputItems, overshoot? }
+function labOutputCardHtml(compound, nameToCrop, view) {
+  const { rows, crafts, outputItems, overshoot = 0 } = view;
+  const ingList = rows.map(row => {
+    const crop = nameToCrop[row.name];
+    return `<div class="lab-ing-row">
+      <span class="lab-ing-left">${labIconHtml(crop, 'lab-ing-icon')}<span class="lab-ing-name">${row.name}</span><span class="lab-ing-ratio">${row.perCraft}× per craft</span></span>
+      <span class="lab-ing-amt">${labAmountHtml(row.items)}</span>
+    </div>`;
+  }).join('');
+  const overNote = overshoot > 0 ? ` · ${labFmtItems(overshoot)} over target` : '';
+  return `<div class="card lab-result-card">
+    ${labResultHeaderHtml(compound)}
+    <div class="lab-farm"><div class="lab-farm-label">Farm this</div>${ingList}</div>
+    ${labProduceHtml(compound, crafts, outputItems, overNote)}
+  </div>`;
+}
+
+// Input mode: use everything you have. Each row shows how much MORE to farm so
+// that ingredient is fully consumed (0 → already covered by what you have).
+// view: { rows, crafts, outputItems }
+function labInputCardHtml(compound, nameToCrop, view) {
+  const { rows, crafts, outputItems } = view;
+  const ingList = rows.map(row => {
+    const crop = nameToCrop[row.name];
+    const sub = row.filled
+      ? `have ${labFmtItems(row.have)} · need ${labFmtItems(row.needed)}`
+      : `need ${labFmtItems(row.needed)}`;
+    const right = row.farmMore > 0
+      ? `<span class="lab-ing-amt">${labAmountHtml(row.farmMore)}</span>`
+      : `<span class="lab-ing-done">✓ all used</span>`;
+    return `<div class="lab-ing-row">
+      <span class="lab-ing-left">${labIconHtml(crop, 'lab-ing-icon')}<span class="lab-ing-name">${row.name}</span><span class="lab-ing-ratio">${sub}</span></span>
+      ${right}
+    </div>`;
+  }).join('');
+  return `<div class="card lab-result-card">
+    ${labResultHeaderHtml(compound)}
+    <div class="lab-farm"><div class="lab-farm-label">Farm to use it all</div>${ingList}</div>
+    ${labProduceHtml(compound, crafts, outputItems)}
+  </div>`;
+}
+
+// Zero-input state: show the recipe and a prompt — never a dead end.
+function labPreviewCard(compound) {
+  const prompt = labMode === 'output'
+    ? 'Enter how much you want to make above.'
+    : 'Enter how much of any ingredient you have above.';
+  return `<div class="card lab-result-card">
+    <div class="lab-result-header">
+      ${labIconHtml(compound, 'lab-result-icon')}
+      <div class="lab-result-heading">
+        <span class="lab-result-name">${compound.name}</span>
+        <span class="lab-recipe-line">${labRecipeLine(compound)}</span>
+      </div>
+    </div>
+    <div class="lab-hint">${prompt}</div>
+  </div>`;
+}
+
+function renderLab() {
+  renderLabInputs();
+  renderLabResults();
+}
+
+// Build the input controls. Called only when the input *shape* changes (compound
+// picked, mode switched, unit flipped) — never on keystroke. Rebuilding mid-type
+// would blow away focus and the caret; the typed value is read back from the DOM
+// so it survives a shape rebuild.
+function renderLabInputs() {
+  const inputsEl = document.getElementById('lab-inputs');
+  if (!inputsEl) return;
+  const compound = allCrops.find(c => c.id === labSelectedId);
+
+  if (labMode === 'output') {
+    const cur = document.getElementById('lab-qty-output')?.value || '';
+    inputsEl.innerHTML = labOutputInputHtml(cur);
+    return;
+  }
+  // Read the per-ingredient values back so they survive a shape rebuild.
+  const prev = {};
+  inputsEl.querySelectorAll('.lab-have-input').forEach(el => { if (el.dataset.ing) prev[el.dataset.ing] = el.value; });
+  const nameToCrop = Object.fromEntries(allCrops.map(c => [c.name, c]));
+  inputsEl.innerHTML = labInputInputHtml(compound, nameToCrop, prev);
+}
+
+// Recompute + repaint ONLY the results card. Safe on every keystroke since it
+// never touches the input elements.
+function renderLabResults() {
+  const resultsEl = document.getElementById('lab-results');
+  if (!resultsEl) return;
+
+  const compound = allCrops.find(c => c.id === labSelectedId);
+  if (!compound) {
+    resultsEl.innerHTML = '<div class="card lab-empty">Choose a compound above to see its recipe.</div>';
+    return;
+  }
+  const nameToCrop = Object.fromEntries(allCrops.map(c => [c.name, c]));
+
+  if (labMode === 'output') {
+    const raw = parseFloat(document.getElementById('lab-qty-output')?.value) || 0;
+    if (raw <= 0) { resultsEl.innerHTML = labPreviewCard(compound); return; }
+    const calc = labCalcFromOutput(compound, labToItems(raw));
+    resultsEl.innerHTML = labOutputCardHtml(compound, nameToCrop, calc);
+    return;
+  }
+
+  // Collect what the user filled in (any subset of ingredients), in items.
+  const haves = {};
+  document.querySelectorAll('#lab-inputs .lab-have-input').forEach(el => {
+    const v = parseFloat(el.value);
+    if (el.dataset.ing && Number.isFinite(v) && v > 0) haves[el.dataset.ing] = labToItems(v);
+  });
+  if (!Object.keys(haves).length) { resultsEl.innerHTML = labPreviewCard(compound); return; }
+  const calc = labCalcFromInputs(compound, haves);
+  resultsEl.innerHTML = labInputCardHtml(compound, nameToCrop, calc);
 }
 
 // ── Vote tracker ──────────────────────────────────────────────────────────────
