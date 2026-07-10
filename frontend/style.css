@@ -26,7 +26,11 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  background: var(--bg);
+  overscroll-behavior-y: none;
+}
 
 body {
   background:
@@ -39,6 +43,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   min-height: 100dvh;
+  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -98,8 +103,12 @@ header {
 .nav-tabs {
   display: flex;
   gap: 2px;
-  flex-shrink: 0;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.nav-tabs::-webkit-scrollbar { display: none; }
 .nav-tab {
   padding: 6px 16px;
   border-radius: 6px;
@@ -193,7 +202,7 @@ main {
 /* ── Stats row ── */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 .stat-card {
@@ -686,6 +695,12 @@ canvas { display: block; }
   transform-origin: top center;
   animation: cbxPop 160ms var(--ease-out);
 }
+/* When there isn't room to open downward (e.g. field near the bottom of a
+   mobile viewport), open upward instead so the full option list is reachable. */
+.cbx.cbx-flip .cbx-list {
+  top: auto; bottom: calc(100% + 6px);
+  transform-origin: bottom center;
+}
 @keyframes cbxPop {
   from { opacity: 0; transform: translateY(-4px) scale(0.985); }
   to   { opacity: 1; transform: none; }
@@ -716,7 +731,7 @@ canvas { display: block; }
 /* Live readout strip above the main chart */
 .chart-readout {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   padding: 12px 16px 0;
 }
@@ -872,7 +887,7 @@ canvas { display: block; }
 /* Graphs page responsive */
 @media (max-width: 720px) {
   .movers-row { grid-template-columns: 1fr; }
-  .chart-readout { grid-template-columns: repeat(2, 1fr); }
+  .chart-readout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ── Prestige page ── */
@@ -1311,12 +1326,20 @@ body.drawer-open { overflow: hidden; }
   .home-tables { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .card-header { flex-direction: column; align-items: flex-start; }
   .table-controls { flex-direction: column; }
   .nav-tabs { gap: 0; }
   .nav-tab { padding: 6px 10px; font-size: 12px; }
   .header-inner { flex-wrap: wrap; }
+  /* Item rows pack icon+name, price, purity selects, and the DC
+     stepper+remove button into one flex row with nothing allowed to
+     shrink but the name. On mobile that overflows past the card's
+     overflow:hidden edge, hiding the remove button and stepper controls
+     entirely rather than just clipping them visually. Stack instead. */
+  .dash-item-top { flex-wrap: wrap; row-gap: 10px; }
+  .dash-purity-wrap { flex-basis: 100%; }
+  .dash-dc-wrap { flex-basis: 100%; justify-content: flex-end; }
 }
 
 /* ── Icons ─────────────────────────────────────────────────────────────── */
@@ -2306,7 +2329,7 @@ body.drawer-open { overflow: hidden; }
 }
 
 @media (max-width: 700px) {
-  .vote-grid { grid-template-columns: repeat(2, 1fr); }
+  .vote-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {
   .vote-grid { grid-template-columns: 1fr; }
