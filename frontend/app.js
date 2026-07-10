@@ -2491,24 +2491,35 @@ function setLabGivenIngredient(name) {
   renderLab();
 }
 
-// Output mode: user wants `targetOutput` units of the compound.
+// Craft math is integer-honest: you can't run a fraction of a craft, so a
+// batch is always whole crafts. Each row carries `consumed` (= crafts×perCraft),
+// which the economics use uniformly regardless of mode.
+
+// Output mode: user wants at least `targetOutput` units — round crafts UP so
+// the plan actually reaches the target, and report the real (possibly higher)
+// output.
 function labCalcFromOutput(compound, targetOutput) {
-  const crafts = targetOutput / compound.output_qty;
-  const ingredients = Object.entries(compound.recipe).map(([name, perCraft]) => ({
-    name, perCraft, needed: (perCraft / compound.output_qty) * targetOutput,
+  const crafts = Math.ceil(targetOutput / compound.output_qty);
+  const outputUnits = crafts * compound.output_qty;
+  const rows = Object.entries(compound.recipe).map(([name, perCraft]) => ({
+    name, perCraft, consumed: crafts * perCraft, status: 'need',
   }));
-  return { crafts, ingredients };
+  return { crafts, outputUnits, rows, overshoot: outputUnits - targetOutput };
 }
 
-// Input mode: user has `givenQty` of ingredient `givenName`.
+// Input mode: user has `givenQty` of ingredient `givenName` — round crafts DOWN
+// (the given amount caps whole crafts) and surface the leftover.
 function labCalcFromInput(compound, givenName, givenQty) {
   const perCraftGiven = compound.recipe[givenName];
   if (!perCraftGiven) return null;
-  const crafts = givenQty / perCraftGiven;
-  const ingredients = Object.entries(compound.recipe).map(([name, perCraft]) => ({
-    name, perCraft, needed: crafts * perCraft, given: name === givenName,
+  const crafts = Math.floor(givenQty / perCraftGiven);
+  const rows = Object.entries(compound.recipe).map(([name, perCraft]) => ({
+    name, perCraft, consumed: crafts * perCraft,
+    status: name === givenName ? 'have' : 'need',
+    have: name === givenName ? givenQty : undefined,
+    leftover: name === givenName ? givenQty - crafts * perCraft : undefined,
   }));
-  return { crafts, ingredients, outputQty: crafts * compound.output_qty };
+  return { crafts, outputUnits: crafts * compound.output_qty, rows };
 }
 
 function labOutputInputHtml(value) {
@@ -2535,41 +2546,112 @@ function labInputInputHtml(compound, givenIng, value) {
     </label>`;
 }
 
-function labResultCardHtml(compound, nameToCrop, crafts, ingredients, outputQty) {
-  const icon = (crop) => crop && crop.icon
-    ? `<img src="/static/icons/${crop.icon}?v=tp1" class="lab-ing-icon" alt="" />`
-    : `<span class="compound-emoji">${(crop && crop.emoji) || ''}</span>`;
-  const dc = (n) => `<span class="lab-dc-sub">${(n / ITEMS_PER_DC).toFixed(2)} DC</span>`;
-  const fmtQty = (n) => Math.round(n).toLocaleString();
-  const fmtCrafts = (n) => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+// ── Result card ────────────────────────────────────────────────────────────
+const labMoney = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const labDcInline = (n) => `${(n / ITEMS_PER_DC).toFixed(2)} DC`;
+const labDcSub = (n) => `<span class="lab-dc-sub">${labDcInline(n)}</span>`;
+const labFmtQty = (n) => Math.round(n).toLocaleString();
 
-  const rows = ingredients.map(row => {
+function labIconHtml(crop, cls) {
+  return crop && crop.icon
+    ? `<img src="/static/icons/${crop.icon}?v=tp1" class="${cls}" alt="" />`
+    : `<span class="compound-emoji">${(crop && crop.emoji) || ''}</span>`;
+}
+
+// "1× Chorufrium  +  3× Sweeberrium  →  2× Chorberrium"
+function labRecipeLine(compound) {
+  const parts = Object.entries(compound.recipe).map(([n, q]) => `${q}× ${n}`).join('  +  ');
+  return `${parts}  →  ${compound.output_qty}× ${compound.name}`;
+}
+
+// Signed money, using a real minus glyph so +/− line up.
+function labSignedMoney(n) {
+  return (n >= 0 ? '+' : '−') + labMoney(Math.abs(n));
+}
+
+// view: { rows, crafts?, outputUnits?, overshoot?, perCraft?, hint? }
+// perCraft=true renders the base recipe (quantities per single craft) — used as
+// the informative zero-input preview so prices show before any amount is typed.
+function labCardHtml(compound, nameToCrop, view) {
+  const { rows, crafts, outputUnits, overshoot = 0, perCraft = false, hint } = view;
+
+  // Economics — same craft-profit basis as the price tooltip, scaled to `consumed`.
+  let inputCost = 0, allKnown = true;
+  const priced = rows.map(row => {
+    const qty  = perCraft ? row.perCraft : row.consumed;
+    const unit = fullPriceMap[row.name] ?? null;
+    const cost = unit != null ? unit * qty : null;
+    if (cost != null) inputCost += cost; else allKnown = false;
+    return { ...row, qty, unit, cost };
+  });
+  const outUnits  = perCraft ? compound.output_qty : outputUnits;
+  const outUnit   = compound.current_price ?? null;
+  const outputVal = outUnit != null ? outUnit * outUnits : null;
+  const profit    = (allKnown && outputVal != null) ? outputVal - inputCost : null;
+  const profitCls = profit == null ? '' : profit >= 0 ? 'lab-pos' : 'lab-neg';
+
+  const bodyRows = priced.map(row => {
     const crop = nameToCrop[row.name];
-    return `<tr class="${row.given ? 'lab-row-given' : ''}">
-      <td>${icon(crop)}${row.name}${row.given ? ' <em>(have)</em>' : ''}</td>
-      <td class="lab-num">${row.perCraft}× per craft</td>
-      <td class="lab-num">${fmtQty(row.needed)}${dc(row.needed)}</td>
+    let amount;
+    if (row.status === 'have') {
+      const sub = row.leftover > 0
+        ? `uses ${labFmtQty(row.consumed)} · ${labFmtQty(row.leftover)} left`
+        : `all ${labFmtQty(row.consumed)} used`;
+      amount = `<span class="lab-have">have ${labFmtQty(row.have)}</span>${labDcSub(row.have)}<span class="lab-amt-note">${sub}</span>`;
+    } else {
+      // Per-craft quantities are tiny — a DC figure there is always ~0, so skip it.
+      amount = `${labFmtQty(row.qty)}${perCraft ? '' : labDcSub(row.qty)}`;
+    }
+    const cost = row.cost != null
+      ? `${labMoney(row.cost)}<span class="lab-amt-note">@ ${labMoney(row.unit)}</span>`
+      : '<span class="lab-amt-note">no price</span>';
+    return `<tr class="${row.status === 'have' ? 'lab-row-given' : ''}">
+      <td>${labIconHtml(crop, 'lab-ing-icon')}${row.name}</td>
+      <td class="lab-num">${amount}</td>
+      <td class="lab-num">${cost}</td>
     </tr>`;
   }).join('');
 
-  const compoundIcon = compound.icon
-    ? `<img src="/static/icons/${compound.icon}?v=tp1" class="lab-result-icon" alt="" />`
-    : `<span class="compound-emoji">${compound.emoji || ''}</span>`;
+  const profitTag = profit == null ? ''
+    : `<span class="lab-profit-tag ${profitCls}">${labSignedMoney(profit)}${perCraft ? ' / craft' : ''}</span>`;
+
+  const econ = `<div class="lab-econ">
+    <div class="lab-econ-item"><span class="lab-econ-k">Input cost</span><span class="lab-econ-v lab-neg">${allKnown ? labMoney(inputCost) : '—'}</span></div>
+    <div class="lab-econ-item"><span class="lab-econ-k">Output value</span><span class="lab-econ-v">${outputVal != null ? labMoney(outputVal) : '—'}</span></div>
+    <div class="lab-econ-item"><span class="lab-econ-k">${perCraft ? 'Profit / craft' : 'Net profit'}</span><span class="lab-econ-v ${profitCls}">${profit != null ? labSignedMoney(profit) : '—'}</span></div>
+  </div>`;
+
+  const banner = perCraft ? '' : `<div class="lab-output-banner">
+    <span class="lab-output-val">${labFmtQty(outputUnits)}</span>
+    <span class="lab-output-label">${compound.name} produced · ${crafts.toLocaleString()} craft${crafts === 1 ? '' : 's'} · ${labDcInline(outputUnits)}${overshoot > 0 ? ` · ${labFmtQty(overshoot)} over target` : ''}</span>
+  </div>`;
 
   return `<div class="card lab-result-card">
     <div class="lab-result-header">
-      ${compoundIcon}<span class="lab-result-name">${compound.name}</span>
-      <span class="lab-crafts-tag">${fmtCrafts(crafts)} crafts</span>
+      ${labIconHtml(compound, 'lab-result-icon')}
+      <div class="lab-result-heading">
+        <span class="lab-result-name">${compound.name}</span>
+        <span class="lab-recipe-line">${labRecipeLine(compound)}</span>
+      </div>
+      ${profitTag}
     </div>
     <table class="lab-table">
-      <thead><tr><th>Ingredient</th><th>Ratio</th><th>Needed</th></tr></thead>
-      <tbody>${rows}</tbody>
+      <thead><tr><th>Ingredient</th><th class="lab-num">${perCraft ? 'Per craft' : 'Amount'}</th><th class="lab-num">Cost</th></tr></thead>
+      <tbody>${bodyRows}</tbody>
     </table>
-    ${outputQty != null ? `<div class="lab-output-banner">
-      <span class="lab-output-val">${fmtQty(outputQty)}</span>
-      <span class="lab-output-label">${compound.name} produced ${dc(outputQty)}</span>
-    </div>` : ''}
+    ${econ}
+    ${banner}
+    ${hint ? `<div class="lab-hint">${hint}</div>` : ''}
   </div>`;
+}
+
+// Zero-input state: show the base recipe + per-craft economics, not a dead prompt.
+function labPreviewCard(compound, nameToCrop) {
+  const rows = Object.entries(compound.recipe).map(([name, perCraft]) => ({ name, perCraft, status: 'need' }));
+  return labCardHtml(compound, nameToCrop, {
+    rows, perCraft: true,
+    hint: 'Numbers shown per craft — enter an amount above to scale the full recipe.',
+  });
 }
 
 function renderLab() {
@@ -2583,7 +2665,7 @@ function renderLab() {
     inputsEl.innerHTML = labMode === 'output'
       ? labOutputInputHtml(0)
       : labInputInputHtml(null, '', 0);
-    resultsEl.innerHTML = '<div class="card lab-empty">Choose a compound above to see its craft ratio.</div>';
+    resultsEl.innerHTML = '<div class="card lab-empty">Choose a compound above to see its recipe and craft economics.</div>';
     return;
   }
 
@@ -2592,12 +2674,8 @@ function renderLab() {
   if (labMode === 'output') {
     const targetOutput = parseFloat(document.getElementById('lab-qty-output')?.value) || 0;
     inputsEl.innerHTML = labOutputInputHtml(targetOutput);
-    if (targetOutput <= 0) {
-      resultsEl.innerHTML = '<div class="card lab-empty">Enter a target output amount above.</div>';
-      return;
-    }
-    const { crafts, ingredients } = labCalcFromOutput(compound, targetOutput);
-    resultsEl.innerHTML = labResultCardHtml(compound, nameToCrop, crafts, ingredients, null);
+    if (targetOutput <= 0) { resultsEl.innerHTML = labPreviewCard(compound, nameToCrop); return; }
+    resultsEl.innerHTML = labCardHtml(compound, nameToCrop, labCalcFromOutput(compound, targetOutput));
     return;
   }
 
@@ -2607,13 +2685,14 @@ function renderLab() {
   const givenQty = parseFloat(document.getElementById('lab-qty-given')?.value) || 0;
   inputsEl.innerHTML = labInputInputHtml(compound, labGivenIng, givenQty);
 
-  if (givenQty <= 0) {
-    resultsEl.innerHTML = '<div class="card lab-empty">Enter how much of the selected ingredient you have.</div>';
-    return;
-  }
+  if (givenQty <= 0) { resultsEl.innerHTML = labPreviewCard(compound, nameToCrop); return; }
   const calc = labCalcFromInput(compound, labGivenIng, givenQty);
   if (!calc) { resultsEl.innerHTML = '<div class="card lab-empty">—</div>'; return; }
-  resultsEl.innerHTML = labResultCardHtml(compound, nameToCrop, calc.crafts, calc.ingredients, calc.outputQty);
+  if (calc.crafts < 1) {
+    resultsEl.innerHTML = `<div class="card lab-empty">You need at least ${compound.recipe[labGivenIng]} ${labGivenIng} to make one craft of ${compound.name}.</div>`;
+    return;
+  }
+  resultsEl.innerHTML = labCardHtml(compound, nameToCrop, calc);
 }
 
 // ── Vote tracker ──────────────────────────────────────────────────────────────

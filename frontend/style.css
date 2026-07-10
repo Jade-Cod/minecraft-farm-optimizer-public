@@ -2187,7 +2187,20 @@ body.drawer-open { overflow: hidden; }
   border-color: rgba(84,172,210,0.6);
   box-shadow: 0 0 0 3px rgba(84,172,210,0.12);
 }
-.lab-ing-select { min-width: 180px; }
+/* Native ingredient select — match the dark inputs, drop the OS chevron. */
+.lab-ing-select {
+  min-width: 180px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8790' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+/* Result / preview cards are capped to a readable measure so numbers stay
+   next to their labels instead of sprawling across the whole viewport. */
+.lab-result-card, .lab-empty { max-width: 760px; }
 
 .lab-empty {
   padding: 32px 16px;
@@ -2197,15 +2210,47 @@ body.drawer-open { overflow: hidden; }
 }
 
 .lab-result-card { display: flex; flex-direction: column; gap: 14px; }
-.lab-result-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.lab-result-icon { width: 28px; height: 28px; image-rendering: pixelated; flex-shrink: 0; }
+.lab-result-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.lab-result-icon { width: 30px; height: 30px; image-rendering: pixelated; flex-shrink: 0; }
+.lab-result-heading { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .lab-result-name { font-size: 15px; font-weight: 700; }
-.lab-crafts-tag {
+.lab-recipe-line { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lab-profit-tag {
   margin-left: auto;
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.lab-pos { color: var(--green); }
+.lab-neg { color: #e06a5c; }
+.lab-amt-note {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.lab-have { color: #6cc1e6; font-weight: 600; }
+
+/* Economics footer — input cost / output value / net, reusing live prices. */
+.lab-econ {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 12px 10px 2px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.lab-econ-item { display: flex; flex-direction: column; gap: 3px; }
+.lab-econ-k {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255,255,255,0.4);
+  font-weight: 700;
+}
+.lab-econ-v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lab-hint { font-size: 12px; color: var(--muted); font-style: italic; }
 
 .lab-table { width: 100%; border-collapse: collapse; }
 .lab-table th {
