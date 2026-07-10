@@ -455,10 +455,13 @@ async function syncPrices() {
   const syncLabel = document.getElementById('sync-label');
   if (syncLabel) syncLabel.textContent = 'Syncing…';
   status.textContent = '';
+  status.title = '';
   try {
     const res = await apiFetch(`${API}/api/sync`, { method: 'POST' });
     const data = await res.json();
-    status.textContent = `Updated ${data.updated} prices · ${data.synced_at}`;
+    const statusText = `Updated ${data.updated} prices · ${data.synced_at}`;
+    status.textContent = statusText;
+    status.title = statusText;
     await loadCrops();
     await loadTopStats();
     // Refresh graphs if they've been initialized
@@ -471,6 +474,7 @@ async function syncPrices() {
     }
   } catch (e) {
     status.textContent = 'Sync failed';
+    status.title = 'Sync failed';
     console.error(e);
   } finally {
     btn.disabled = false;
