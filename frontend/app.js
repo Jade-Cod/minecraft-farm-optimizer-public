@@ -2488,7 +2488,7 @@ function setLabMode(mode) {
 
 function setLabGivenIngredient(name) {
   labGivenIng = name;
-  renderLab();
+  renderLabResults();
 }
 
 // Craft math is integer-honest: you can't run a fraction of a craft, so a
@@ -2526,7 +2526,7 @@ function labOutputInputHtml(value) {
   return `<label class="lab-qty-label">
     <span class="lab-qty-fish">Target output amount</span>
     <input type="number" min="0" id="lab-qty-output" class="lab-qty-input"
-      value="${value || ''}" placeholder="e.g. 20000" oninput="renderLab()" />
+      value="${value || ''}" placeholder="e.g. 20000" oninput="renderLabResults()" />
   </label>`;
 }
 
@@ -2542,7 +2542,7 @@ function labInputInputHtml(compound, givenIng, value) {
     <label class="lab-qty-label">
       <span class="lab-qty-fish">Amount I have</span>
       <input type="number" min="0" id="lab-qty-given" class="lab-qty-input"
-        value="${value || ''}" placeholder="e.g. 20000" oninput="renderLab()" ${compound ? '' : 'disabled'} />
+        value="${value || ''}" placeholder="e.g. 20000" oninput="renderLabResults()" ${compound ? '' : 'disabled'} />
     </label>`;
 }
 
@@ -2635,10 +2635,12 @@ function labCardHtml(compound, nameToCrop, view) {
       </div>
       ${profitTag}
     </div>
-    <table class="lab-table">
-      <thead><tr><th>Ingredient</th><th class="lab-num">${perCraft ? 'Per craft' : 'Amount'}</th><th class="lab-num">Cost</th></tr></thead>
-      <tbody>${bodyRows}</tbody>
-    </table>
+    <div class="lab-table-wrap">
+      <table class="lab-table">
+        <thead><tr><th>Ingredient</th><th class="lab-num">${perCraft ? 'Per craft' : 'Amount'}</th><th class="lab-num">Cost</th></tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>
     ${econ}
     ${banner}
     ${hint ? `<div class="lab-hint">${hint}</div>` : ''}
@@ -2655,36 +2657,56 @@ function labPreviewCard(compound, nameToCrop) {
 }
 
 function renderLab() {
-  const inputsEl  = document.getElementById('lab-inputs');
-  const resultsEl = document.getElementById('lab-results');
-  if (!inputsEl || !resultsEl) return;
+  renderLabInputs();
+  renderLabResults();
+}
 
+// Build the input controls. Called only when the input *shape* changes
+// (compound picked, mode switched) — never on keystroke. Rebuilding the field
+// mid-type would blow away focus and the caret, forcing a re-click after each
+// character. The current typed value is read back from the DOM so it survives
+// a shape rebuild.
+function renderLabInputs() {
+  const inputsEl = document.getElementById('lab-inputs');
+  if (!inputsEl) return;
   const compound = allCrops.find(c => c.id === labSelectedId);
 
+  if (labMode === 'output') {
+    const cur = document.getElementById('lab-qty-output')?.value || '';
+    inputsEl.innerHTML = labOutputInputHtml(cur);
+    return;
+  }
+  if (compound) {
+    const ingNames = Object.keys(compound.recipe);
+    if (!labGivenIng || !ingNames.includes(labGivenIng)) labGivenIng = ingNames[0];
+  }
+  const cur = document.getElementById('lab-qty-given')?.value || '';
+  inputsEl.innerHTML = labInputInputHtml(compound, labGivenIng, cur);
+}
+
+// Recompute + repaint ONLY the results card. Safe to call on every keystroke
+// since it never touches the input elements.
+function renderLabResults() {
+  const resultsEl = document.getElementById('lab-results');
+  if (!resultsEl) return;
+
+  const compound = allCrops.find(c => c.id === labSelectedId);
   if (!compound) {
-    inputsEl.innerHTML = labMode === 'output'
-      ? labOutputInputHtml(0)
-      : labInputInputHtml(null, '', 0);
     resultsEl.innerHTML = '<div class="card lab-empty">Choose a compound above to see its recipe and craft economics.</div>';
     return;
   }
-
   const nameToCrop = Object.fromEntries(allCrops.map(c => [c.name, c]));
 
   if (labMode === 'output') {
     const targetOutput = parseFloat(document.getElementById('lab-qty-output')?.value) || 0;
-    inputsEl.innerHTML = labOutputInputHtml(targetOutput);
     if (targetOutput <= 0) { resultsEl.innerHTML = labPreviewCard(compound, nameToCrop); return; }
     resultsEl.innerHTML = labCardHtml(compound, nameToCrop, labCalcFromOutput(compound, targetOutput));
     return;
   }
 
-  // Input mode
   const ingNames = Object.keys(compound.recipe);
   if (!labGivenIng || !ingNames.includes(labGivenIng)) labGivenIng = ingNames[0];
   const givenQty = parseFloat(document.getElementById('lab-qty-given')?.value) || 0;
-  inputsEl.innerHTML = labInputInputHtml(compound, labGivenIng, givenQty);
-
   if (givenQty <= 0) { resultsEl.innerHTML = labPreviewCard(compound, nameToCrop); return; }
   const calc = labCalcFromInput(compound, labGivenIng, givenQty);
   if (!calc) { resultsEl.innerHTML = '<div class="card lab-empty">—</div>'; return; }

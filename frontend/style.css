@@ -2209,7 +2209,9 @@ body.drawer-open { overflow: hidden; }
   font-size: 13px;
 }
 
-.lab-result-card { display: flex; flex-direction: column; gap: 14px; }
+/* .card has no built-in padding — give the result card its own so numbers
+   don't run into the edges. */
+.lab-result-card { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
 .lab-result-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .lab-result-icon { width: 30px; height: 30px; image-rendering: pixelated; flex-shrink: 0; }
 .lab-result-heading { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -2238,7 +2240,7 @@ body.drawer-open { overflow: hidden; }
   display: flex;
   flex-wrap: wrap;
   gap: 24px;
-  padding: 12px 10px 2px;
+  padding: 12px 0 2px;
   border-top: 1px solid rgba(255,255,255,0.07);
 }
 .lab-econ-item { display: flex; flex-direction: column; gap: 3px; }
@@ -2252,6 +2254,9 @@ body.drawer-open { overflow: hidden; }
 .lab-econ-v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .lab-hint { font-size: 12px; color: var(--muted); font-style: italic; }
 
+/* Table scrolls inside its own box on very narrow screens rather than
+   spilling out of the card. */
+.lab-table-wrap { overflow-x: auto; }
 .lab-table { width: 100%; border-collapse: collapse; }
 .lab-table th {
   text-align: left;
@@ -2260,12 +2265,16 @@ body.drawer-open { overflow: hidden; }
   letter-spacing: 0.5px;
   color: rgba(255,255,255,0.35);
   font-weight: 700;
-  padding: 6px 10px;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.lab-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.lab-table td { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+/* Ingredient column absorbs the slack so the two numeric columns group at the
+   right edge (read: label · amount · cost) instead of sprawling apart. */
+.lab-table th:first-child, .lab-table td:first-child { width: 100%; }
+.lab-table th:not(:first-child), .lab-table td:not(:first-child) { padding-left: 32px; white-space: nowrap; }
 .lab-ing-icon { width: 20px; height: 20px; image-rendering: pixelated; vertical-align: middle; margin-right: 6px; }
-.lab-row-given { background: rgba(84,172,210,0.08); }
+.lab-row-given { background: rgba(84,172,210,0.07); }
 .lab-num { font-variant-numeric: tabular-nums; text-align: right; }
 .lab-dc-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
 
@@ -2274,7 +2283,9 @@ body.drawer-open { overflow: hidden; }
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 10px 16px;
+  /* Full-bleed footer: bleed past the card's padding to the rounded edges. */
+  margin: 4px -20px -16px;
+  padding: 12px 20px;
   border-top: 1px solid rgba(255,255,255,0.07);
   background: rgba(0,0,0,0.15);
 }
