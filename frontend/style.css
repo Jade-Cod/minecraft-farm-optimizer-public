@@ -149,9 +149,10 @@ header {
 }
 .nav-dropdown-trigger[aria-expanded="true"] .nav-dropdown-caret { transform: rotate(180deg); }
 .nav-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  /* Fixed (not absolute) so the menu escapes .nav-tabs' overflow-x:auto scroll
+     box — which would otherwise clip it. Coordinates are set from the trigger
+     in positionNavDropdown() on open. */
+  position: fixed;
   z-index: 150;
   min-width: 190px;
   padding: 4px;
@@ -186,7 +187,8 @@ header {
 .nav-dropdown-item:hover { background: rgba(255,255,255,0.09); }
 .nav-dropdown-item.is-active { color: var(--blue); background: rgba(84,172,210,0.12); }
 @media (max-width: 700px) {
-  .nav-dropdown-menu { left: auto; right: 0; min-width: 160px; }
+  /* left is set from the trigger in JS (and clamped on-screen); just narrow it. */
+  .nav-dropdown-menu { min-width: 160px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .nav-dropdown-menu, .nav-dropdown-menu[data-open="true"] {
