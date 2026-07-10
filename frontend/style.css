@@ -2244,13 +2244,8 @@ body.drawer-open { overflow: hidden; }
 .lab-amt-unit { font-size: 12px; color: var(--muted); font-weight: 600; margin-left: 4px; }
 .lab-amt-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .lab-ing-empty { padding: 14px 0; color: var(--muted); font-size: 13.5px; }
-
-.lab-leftover {
-  font-size: 13px; color: var(--muted);
-  background: rgba(227,179,65,0.07); border: 1px solid rgba(227,179,65,0.22);
-  border-radius: 10px; padding: 10px 14px;
-}
-.lab-leftover strong { color: var(--yellow); font-weight: 700; }
+/* Input mode: an ingredient already fully covered by what you have. */
+.lab-ing-done { font-size: 13px; font-weight: 700; color: var(--green); flex-shrink: 0; }
 
 /* The answer: how much you end up with. Full-bleed footer. */
 .lab-produce {

@@ -2518,21 +2518,18 @@ function labCalcFromOutput(compound, targetItems) {
 }
 
 // Input mode: `haves` maps ingredient name → items the user has (only the
-// ingredients they filled in). Whole crafts are capped by whichever filled
-// ingredient runs out first (the bottleneck); unfilled ingredients are farmed.
-// One ingredient filled → identical to the old single-ingredient behaviour.
+// ingredients they filled in). Goal: craft EVERYTHING you have into the final
+// product with nothing left over. So run enough crafts to consume the pile that
+// demands the most crafts (round UP so it's fully used), then top every other
+// ingredient up to match — telling the user how much MORE to farm of each.
 function labCalcFromInputs(compound, haves) {
   const haveNames = Object.keys(haves);
   if (!haveNames.length) return null;
-  const crafts = Math.min(...haveNames.map(n => Math.floor(haves[n] / compound.recipe[n])));
+  const crafts = Math.max(...haveNames.map(n => Math.ceil(haves[n] / compound.recipe[n])));
   const rows = Object.entries(compound.recipe).map(([name, perCraft]) => {
-    const has = name in haves;
-    return {
-      name, perCraft, items: crafts * perCraft,
-      status: has ? 'have' : 'need',
-      have: has ? haves[name] : undefined,
-      leftover: has ? haves[name] - crafts * perCraft : undefined,
-    };
+    const have = haves[name] || 0;
+    const needed = crafts * perCraft;
+    return { name, perCraft, needed, have, farmMore: needed - have, filled: name in haves };
   });
   return { crafts, outputItems: crafts * compound.output_qty, rows };
 }
@@ -2599,46 +2596,64 @@ function labAmountHtml(items) {
     : `<span class="lab-amt-main">${labFmtItems(items)}</span><span class="lab-amt-sub">${labFmtDc(items)} DC</span>`;
 }
 
-// view: { rows, crafts, outputItems, overshoot?, mode }
-function labCardHtml(compound, nameToCrop, view) {
-  const { rows, crafts, outputItems, overshoot = 0, mode } = view;
-  const needRows = rows.filter(r => r.status === 'need');
-  const haveRows = rows.filter(r => r.status === 'have');
+function labResultHeaderHtml(compound) {
+  return `<div class="lab-result-header">
+    ${labIconHtml(compound, 'lab-result-icon')}
+    <div class="lab-result-heading">
+      <span class="lab-result-name">${compound.name}</span>
+      <span class="lab-recipe-line">${labRecipeLine(compound)}</span>
+    </div>
+  </div>`;
+}
 
-  const ingList = needRows.map(row => {
+function labProduceHtml(compound, crafts, outputItems, extraNote = '') {
+  return `<div class="lab-produce">
+    <span class="lab-produce-val">${labFmtItems(outputItems)}</span>
+    <span class="lab-produce-meta">${compound.name}<span class="lab-produce-sub">${crafts.toLocaleString()} craft${crafts === 1 ? '' : 's'} · ${labFmtDc(outputItems)} DC${extraNote}</span></span>
+  </div>`;
+}
+
+// Output mode: "Farm this" — the full ingredient amounts a target needs.
+// view: { rows, crafts, outputItems, overshoot? }
+function labOutputCardHtml(compound, nameToCrop, view) {
+  const { rows, crafts, outputItems, overshoot = 0 } = view;
+  const ingList = rows.map(row => {
     const crop = nameToCrop[row.name];
     return `<div class="lab-ing-row">
       <span class="lab-ing-left">${labIconHtml(crop, 'lab-ing-icon')}<span class="lab-ing-name">${row.name}</span><span class="lab-ing-ratio">${row.perCraft}× per craft</span></span>
       <span class="lab-ing-amt">${labAmountHtml(row.items)}</span>
     </div>`;
-  }).join('') || `<div class="lab-ing-empty">Nothing else to farm — just run the crafts.</div>`;
-
-  const listLabel = mode === 'input' ? 'Also farm' : 'Farm this';
-
-  const leftover = haveRows
-    .filter(r => r.leftover > 0)
-    .map(r => `<div class="lab-leftover">Uses ${labFmtItems(r.have - r.leftover)} of your ${labFmtItems(r.have)} ${r.name} — <strong>${labFmtItems(r.leftover)} left over</strong>.</div>`)
-    .join('');
-
+  }).join('');
   const overNote = overshoot > 0 ? ` · ${labFmtItems(overshoot)} over target` : '';
-
   return `<div class="card lab-result-card">
-    <div class="lab-result-header">
-      ${labIconHtml(compound, 'lab-result-icon')}
-      <div class="lab-result-heading">
-        <span class="lab-result-name">${compound.name}</span>
-        <span class="lab-recipe-line">${labRecipeLine(compound)}</span>
-      </div>
-    </div>
-    <div class="lab-farm">
-      <div class="lab-farm-label">${listLabel}</div>
-      ${ingList}
-    </div>
-    ${leftover}
-    <div class="lab-produce">
-      <span class="lab-produce-val">${labFmtItems(outputItems)}</span>
-      <span class="lab-produce-meta">${compound.name}<span class="lab-produce-sub">${crafts.toLocaleString()} craft${crafts === 1 ? '' : 's'} · ${labFmtDc(outputItems)} DC${overNote}</span></span>
-    </div>
+    ${labResultHeaderHtml(compound)}
+    <div class="lab-farm"><div class="lab-farm-label">Farm this</div>${ingList}</div>
+    ${labProduceHtml(compound, crafts, outputItems, overNote)}
+  </div>`;
+}
+
+// Input mode: use everything you have. Each row shows how much MORE to farm so
+// that ingredient is fully consumed (0 → already covered by what you have).
+// view: { rows, crafts, outputItems }
+function labInputCardHtml(compound, nameToCrop, view) {
+  const { rows, crafts, outputItems } = view;
+  const ingList = rows.map(row => {
+    const crop = nameToCrop[row.name];
+    const sub = row.filled
+      ? `have ${labFmtItems(row.have)} · need ${labFmtItems(row.needed)}`
+      : `need ${labFmtItems(row.needed)}`;
+    const right = row.farmMore > 0
+      ? `<span class="lab-ing-amt">${labAmountHtml(row.farmMore)}</span>`
+      : `<span class="lab-ing-done">✓ all used</span>`;
+    return `<div class="lab-ing-row">
+      <span class="lab-ing-left">${labIconHtml(crop, 'lab-ing-icon')}<span class="lab-ing-name">${row.name}</span><span class="lab-ing-ratio">${sub}</span></span>
+      ${right}
+    </div>`;
+  }).join('');
+  return `<div class="card lab-result-card">
+    ${labResultHeaderHtml(compound)}
+    <div class="lab-farm"><div class="lab-farm-label">Farm to use it all</div>${ingList}</div>
+    ${labProduceHtml(compound, crafts, outputItems)}
   </div>`;
 }
 
@@ -2702,7 +2717,7 @@ function renderLabResults() {
     const raw = parseFloat(document.getElementById('lab-qty-output')?.value) || 0;
     if (raw <= 0) { resultsEl.innerHTML = labPreviewCard(compound); return; }
     const calc = labCalcFromOutput(compound, labToItems(raw));
-    resultsEl.innerHTML = labCardHtml(compound, nameToCrop, { ...calc, mode: 'output' });
+    resultsEl.innerHTML = labOutputCardHtml(compound, nameToCrop, calc);
     return;
   }
 
@@ -2714,14 +2729,7 @@ function renderLabResults() {
   });
   if (!Object.keys(haves).length) { resultsEl.innerHTML = labPreviewCard(compound); return; }
   const calc = labCalcFromInputs(compound, haves);
-  if (calc.crafts < 1) {
-    // Name the bottleneck: the filled ingredient you have the fewest crafts' worth of.
-    const short = Object.keys(haves).reduce((a, b) =>
-      haves[a] / compound.recipe[a] <= haves[b] / compound.recipe[b] ? a : b);
-    resultsEl.innerHTML = `<div class="card lab-empty">Not enough yet — one craft of ${compound.name} needs ${compound.recipe[short]} ${short}. Add more to see a result.</div>`;
-    return;
-  }
-  resultsEl.innerHTML = labCardHtml(compound, nameToCrop, { ...calc, mode: 'input' });
+  resultsEl.innerHTML = labInputCardHtml(compound, nameToCrop, calc);
 }
 
 // ── Vote tracker ──────────────────────────────────────────────────────────────
