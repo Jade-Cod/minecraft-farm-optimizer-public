@@ -191,6 +191,18 @@ window.addEventListener('hashchange', navigate);
 
 let navDropdownOpen = false;
 
+// The menu is position:fixed (so it isn't clipped by .nav-tabs' scroll box), so
+// anchor it under the trigger and keep it on-screen.
+function positionNavDropdown() {
+  const menu = document.getElementById('nav-calc-menu');
+  const trig = document.getElementById('nav-calc-trigger');
+  if (!menu || !trig) return;
+  const r = trig.getBoundingClientRect();
+  const w = menu.offsetWidth || 190;
+  menu.style.top = `${r.bottom + 6}px`;
+  menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`;
+}
+
 function toggleNavDropdown(e) {
   e.stopPropagation();
   navDropdownOpen = !navDropdownOpen;
@@ -198,6 +210,7 @@ function toggleNavDropdown(e) {
   const trig = document.getElementById('nav-calc-trigger');
   if (menu) menu.dataset.open = String(navDropdownOpen);
   if (trig) trig.setAttribute('aria-expanded', String(navDropdownOpen));
+  if (navDropdownOpen) positionNavDropdown();
 }
 
 function closeNavDropdown() {
