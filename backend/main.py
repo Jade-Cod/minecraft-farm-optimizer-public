@@ -857,8 +857,11 @@ async def sync_prices(request: Request, user: dict = Depends(require_user)):
     return {"updated": updated, "synced_at": today}
 
 
+# Note: behind Caddy all clients share one limiter identity (uvicorn runs
+# without --proxy-headers), so this bucket is site-wide. The 30s payload
+# cache in status.py makes these requests ~free; the limit is abuse-bounding.
 @app.get("/api/status")
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def server_status(request: Request):
     try:
         return status_module.get_status_payload(get_db)
