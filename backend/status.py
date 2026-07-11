@@ -20,6 +20,14 @@ RETENTION_S = 90 * 86400      # keep 90 days of checks
 WINDOW_S = 15 * 86400         # heatmap/events window: covers "last week" view
 
 _MC_FORMAT_CODES = re.compile(r"§.")  # strip §-style color codes from version names
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _as_int(v, lo=0, hi=10_000_000):
+    """Clamp untrusted numeric fields from the pinged server's JSON; None if not a number."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    return max(lo, min(hi, int(v)))
 
 
 # ── Server List Ping protocol ────────────────────────────────────────────────
@@ -59,7 +67,7 @@ async def ping_server(host: str, port: int, timeout: float = PING_TIMEOUT_S) -> 
                      + struct.pack(">H", port) + pack_varint(1))
         # Status request: empty packet 0x00
         writer.write(pack_varint(len(handshake)) + handshake + pack_varint(1) + pack_varint(0x00))
-        await writer.drain()
+        await asyncio.wait_for(writer.drain(), timeout)
 
         async def read_response() -> dict:
             await read_varint(reader)                    # packet length
@@ -79,12 +87,18 @@ async def ping_server(host: str, port: int, timeout: float = PING_TIMEOUT_S) -> 
         except Exception:
             pass
 
-    players = status.get("players", {})
-    version = _MC_FORMAT_CODES.sub("", str(status.get("version", {}).get("name", "")))[:64]
+    # The response JSON is attacker-controlled (whatever answers the ping):
+    # validate shapes, clamp numbers, and sanitize the version string.
+    players = status.get("players")
+    if not isinstance(players, dict):
+        players = {}
+    version_obj = status.get("version")
+    version_name = version_obj.get("name", "") if isinstance(version_obj, dict) else ""
+    version = _CONTROL_CHARS.sub("", _MC_FORMAT_CODES.sub("", str(version_name)))[:64]
     return {
         "latency_ms": latency_ms,
-        "players": players.get("online"),
-        "max_players": players.get("max"),
+        "players": _as_int(players.get("online")),
+        "max_players": _as_int(players.get("max")),
         "version": version or None,
     }
 
@@ -121,7 +135,24 @@ async def status_check_loop(get_db):
 
 # ── API payload ──────────────────────────────────────────────────────────────
 
+# Data only changes once per check interval, so cache the computed payload:
+# under hostile traffic the endpoint serves a dict instead of re-running the
+# heatmap/window queries per request.
+PAYLOAD_CACHE_TTL_S = 30
+_payload_cache = {"at": 0.0, "data": None}
+
+
 def get_status_payload(get_db) -> dict:
+    if _payload_cache["data"] is not None and \
+            time.monotonic() - _payload_cache["at"] < PAYLOAD_CACHE_TTL_S:
+        return _payload_cache["data"]
+    payload = _build_status_payload(get_db)
+    _payload_cache["at"] = time.monotonic()
+    _payload_cache["data"] = payload
+    return payload
+
+
+def _build_status_payload(get_db) -> dict:
     now = int(time.time())
     conn = get_db()
 
@@ -203,6 +234,12 @@ if __name__ == "__main__":
     for n in (0, 1, 127, 128, 300, 25565, 2**31 - 1):
         assert asyncio.run(_roundtrip(n)) == n, n
     assert pack_varint(-1) == b"\xff\xff\xff\xff\x0f"
+
+    # Untrusted-field coercion: non-numbers/bools → None, out-of-range clamped
+    assert _as_int(47) == 47 and _as_int(47.9) == 47
+    assert _as_int("47") is None and _as_int({"x": 1}) is None
+    assert _as_int(True) is None and _as_int(None) is None
+    assert _as_int(-5) == 0 and _as_int(10**12) == 10_000_000
 
     # Payload aggregation on an in-memory DB: 3h of checks with one 2-check outage
     shared = sqlite3.connect(":memory:")

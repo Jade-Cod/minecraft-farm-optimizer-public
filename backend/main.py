@@ -860,7 +860,11 @@ async def sync_prices(request: Request, user: dict = Depends(require_user)):
 @app.get("/api/status")
 @limiter.limit("30/minute")
 def server_status(request: Request):
-    return status_module.get_status_payload(get_db)
+    try:
+        return status_module.get_status_payload(get_db)
+    except Exception as e:
+        print(f"[status] payload error: {e}")
+        raise HTTPException(status_code=503, detail="Status temporarily unavailable")
 
 
 @app.get("/api/layout")
