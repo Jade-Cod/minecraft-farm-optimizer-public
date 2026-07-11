@@ -28,6 +28,7 @@ from jose import jwt, JWTError
 
 from deps import get_current_user, require_user, JWT_SECRET, JWT_ALGORITHM
 import auth as auth_module
+import status as status_module
 
 _docs_enabled = os.environ.get("ENABLE_DOCS", "0") in ("1", "true", "True")
 app = FastAPI(
@@ -240,6 +241,7 @@ async def startup():
     except FileNotFoundError:
         pass  # crops.json absent on fresh install; will populate after first /api/sync
     asyncio.create_task(vote_notify_loop())
+    asyncio.create_task(status_module.status_check_loop(get_db))
 
 
 # ── Crops helpers ─────────────────────────────────────────────────────────────
@@ -853,6 +855,12 @@ async def sync_prices(request: Request, user: dict = Depends(require_user)):
     os.replace(tmp, DATA_FILE)
 
     return {"updated": updated, "synced_at": today}
+
+
+@app.get("/api/status")
+@limiter.limit("30/minute")
+def server_status(request: Request):
+    return status_module.get_status_payload(get_db)
 
 
 @app.get("/api/layout")

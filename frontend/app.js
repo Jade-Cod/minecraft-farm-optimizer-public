@@ -123,7 +123,7 @@ function maybeShowFirstVisitPulse() {
 
 function getPage() {
   const hash = location.hash.replace('#', '') || 'home';
-  return ['home', 'prices', 'calculator', 'ranks', 'graphs', 'prestige', 'progress', 'sushi', 'vote', 'lab'].includes(hash) ? hash : 'home';
+  return ['home', 'prices', 'calculator', 'ranks', 'graphs', 'prestige', 'progress', 'sushi', 'vote', 'lab', 'status'].includes(hash) ? hash : 'home';
 }
 
 const GATED_PAGES = new Set(['vote', 'prestige']);
@@ -178,6 +178,10 @@ function navigate() {
   }
   if (page === 'prices') {
     positionTabPill('#page-prices .tabs');  // page is now visible — pill can measure the active tab
+  }
+  if (page === 'status') {
+    renderStatus();
+    positionTabPill('#status-range-tabs');
   }
 }
 
@@ -479,6 +483,7 @@ function positionTabPill(containerSelector) {
 function positionAllTabPills() {
   positionTabPill('#page-prices .tabs');
   positionTabPill('#prog-range-tabs');
+  positionTabPill('#status-range-tabs');
 }
 window.addEventListener('resize', positionAllTabPills);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(positionAllTabPills);
@@ -3336,6 +3341,162 @@ function initRanks() {
 
   ranksInitialized = true;
   recompute(true, true); // initial entrance count-up + path render
+}
+
+// ── Status page ───────────────────────────────────────────────────────────────
+
+let statusData = null;
+let statusFetchedAt = 0;      // ms — throttles re-fetch on rapid tab switches
+let statusRange = 'this';     // 'this' | 'last' week shown in the heatmap
+const STATUS_REFRESH_MS = 60000;
+const STATUS_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function escStatus(s) {
+  // Version string comes from the Minecraft server itself — never trust it in HTML.
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function fmtStatusDur(s) {
+  if (s < 90) return `${Math.round(s)}s`;
+  if (s < 5400) return `${Math.round(s / 60)} min`;
+  if (s < 172800) return `${Math.floor(s / 3600)}h ${Math.round(s % 3600 / 60)}m`;
+  return `${Math.floor(s / 86400)}d ${Math.floor(s % 86400 / 3600)}h`;
+}
+
+function fmtStatusWhen(ts) {
+  const d = new Date(ts * 1000);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (d >= today) return `Today ${time}`;
+  if (d >= new Date(today.getTime() - 86400000)) return `Yesterday ${time}`;
+  return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+}
+
+async function renderStatus() {
+  if (Date.now() - statusFetchedAt > 30000) {
+    try {
+      const res = await apiFetch('/api/status');
+      if (res.ok) { statusData = await res.json(); statusFetchedAt = Date.now(); }
+    } catch (_) { /* keep whatever we had; banner shows stale state */ }
+  }
+  const banner = document.getElementById('status-banner');
+  if (!banner) return;
+  if (!statusData || !statusData.current) {
+    banner.dataset.state = 'loading';
+    document.getElementById('status-title').textContent = statusData
+      ? 'No checks recorded yet' : 'Status unavailable';
+    document.getElementById('status-sub').textContent = statusData
+      ? 'The first check runs within a minute of server start.'
+      : 'Could not reach the tools server. Retrying every minute.';
+    return;
+  }
+  renderStatusBanner();
+  renderStatusHeatmap();
+  renderStatusFeed();
+}
+
+// Refresh while the page is open (fetch throttle above makes this cheap).
+setInterval(() => {
+  const page = document.getElementById('page-status');
+  if (page && page.classList.contains('active')) {
+    statusFetchedAt = 0;
+    renderStatus();
+  }
+}, STATUS_REFRESH_MS);
+
+function renderStatusBanner() {
+  const { current, since, now, uptime, host } = statusData;
+  const banner = document.getElementById('status-banner');
+  const up = !!current.online;
+  banner.dataset.state = up ? 'up' : 'down';
+  document.getElementById('status-title').textContent =
+    `${host} is ${up ? 'online' : 'offline'}`;
+
+  const bits = [];
+  if (up && current.version) bits.push(current.version);
+  bits.push(`checked ${fmtStatusDur(Math.max(0, now - current.ts))} ago`);
+  if (since != null) bits.push(`${up ? 'up' : 'down'} for ${fmtStatusDur(now - since)}`);
+  // textContent (not innerHTML): version string is server-controlled input
+  document.getElementById('status-sub').textContent = bits.join(' · ');
+
+  document.getElementById('status-kpi-ping').textContent =
+    up && current.latency_ms != null ? `${current.latency_ms} ms` : '—';
+  document.getElementById('status-kpi-players').textContent =
+    up && current.players != null
+      ? current.players + (current.max_players ? ` / ${current.max_players}` : '') : '—';
+  const upEl = document.getElementById('status-kpi-uptime');
+  upEl.textContent = uptime.d7 != null ? `${uptime.d7}%` : '—';
+  upEl.classList.toggle('status-kpi-good', uptime.d7 != null && uptime.d7 >= 99);
+}
+
+function setStatusRange(range, el) {
+  statusRange = range;
+  document.querySelectorAll('#status-range-tabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  positionTabPill('#status-range-tabs');
+  renderStatusHeatmap();
+}
+
+function renderStatusHeatmap() {
+  const grid = document.getElementById('status-heat-grid');
+  if (!grid || !statusData) return;
+  const byHour = {};
+  statusData.heatmap.forEach(h => { byHour[h.hour] = h; });
+
+  // Monday 00:00 (local) of the selected week. Backend buckets are UTC-hour
+  // aligned, so local hour starts match exactly on whole-hour timezones.
+  const monday = new Date(statusData.now * 1000);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) - (statusRange === 'last' ? 7 : 0));
+
+  let html = '';
+  for (let d = 0; d < 7; d++) {
+    html += `<span class="status-heat-day">${STATUS_DAYS[d]}</span>`;
+    for (let h = 0; h < 24; h++) {
+      const cellStart = new Date(monday);
+      cellStart.setDate(monday.getDate() + d);
+      cellStart.setHours(h);
+      const ts = Math.floor(cellStart.getTime() / 1000);
+      const cell = byHour[ts];
+      let cls, label;
+      if (ts > statusData.now) { cls = 'future'; label = 'Upcoming'; }
+      else if (!cell) { cls = 'nodata'; label = 'No data'; }
+      else if (cell.ok === cell.total) { cls = 'ok'; label = 'Up all hour'; }
+      else if (cell.ok === 0) { cls = 'bad'; label = 'Down'; }
+      else { cls = 'partial'; label = `Partial — ${cell.total - cell.ok} of ${cell.total} checks failed`; }
+      const hh = String(h).padStart(2, '0');
+      html += `<span class="status-heat-cell status-heat-${cls}" title="${STATUS_DAYS[d]} ${hh}:00 — ${label}"></span>`;
+    }
+  }
+  grid.innerHTML = html;
+
+  const hours = document.getElementById('status-heat-hours');
+  if (hours && !hours.childElementCount) {
+    hours.innerHTML = '<span></span>' + Array.from({ length: 24 }, (_, h) =>
+      `<span>${h % 6 === 0 ? String(h).padStart(2, '0') : ''}</span>`).join('');
+  }
+}
+
+function renderStatusFeed() {
+  const feed = document.getElementById('status-feed');
+  if (!feed || !statusData) return;
+  if (!statusData.events.length) {
+    feed.innerHTML = '<div class="status-feed-empty">No downtime in the last 15 days 🎉</div>';
+    return;
+  }
+  feed.innerHTML = statusData.events.map(e => {
+    const isUp = e.type === 'up';
+    const title = isUp ? 'Back online' : 'Server went down';
+    const dur = isUp && e.down_for_s != null ? ` · down for ${fmtStatusDur(e.down_for_s)}` : '';
+    return `
+      <div class="status-feed-item">
+        <span class="status-dot ${isUp ? 'status-dot-up' : 'status-dot-down'}"></span>
+        <div>
+          <div class="status-feed-title">${title}</div>
+          <div class="status-feed-sub">${escStatus(fmtStatusWhen(e.ts))}${dur}</div>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

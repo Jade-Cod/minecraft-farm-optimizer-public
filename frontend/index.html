@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=60" />
+  <link rel="stylesheet" href="/static/style.css?v=61" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -35,6 +35,7 @@
         </div>
         <a class="nav-tab" href="#ranks">Ranks</a>
         <a class="nav-tab" href="#graphs">Graphs</a>
+        <a class="nav-tab" href="#status">Status</a>
         <a class="nav-tab" data-gated="true" href="#prestige">Prestige</a>
         <a class="nav-tab" data-gated="true" href="#vote">Vote</a>
       </nav>
@@ -605,6 +606,63 @@
       <div id="lab-results"></div>
     </div>
 
+    <!-- ===== STATUS PAGE ===== -->
+    <div id="page-status" class="page">
+      <section class="status-banner" id="status-banner" data-state="loading">
+        <span class="status-dot" id="status-dot"></span>
+        <div class="status-banner-text">
+          <div class="status-banner-title" id="status-title">Checking play.labs-mc.com&#8230;</div>
+          <div class="status-banner-sub" id="status-sub">Checks run every 60 seconds</div>
+        </div>
+        <div class="status-banner-kpis">
+          <div class="status-kpi">
+            <span class="status-kpi-label">Ping</span>
+            <span class="status-kpi-val" id="status-kpi-ping">&#8212;</span>
+          </div>
+          <div class="status-kpi">
+            <span class="status-kpi-label">Players</span>
+            <span class="status-kpi-val status-kpi-blue" id="status-kpi-players">&#8212;</span>
+          </div>
+          <div class="status-kpi">
+            <span class="status-kpi-label">Uptime 7d</span>
+            <span class="status-kpi-val" id="status-kpi-uptime">&#8212;</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="status-layout">
+        <section class="card">
+          <div class="card-header">
+            <h2>&#128467;&#65039; Availability &#8212; hour by hour</h2>
+            <div class="tabs" id="status-range-tabs">
+              <button class="tab active" onclick="setStatusRange('this', this)">This week</button>
+              <button class="tab" onclick="setStatusRange('last', this)">Last week</button>
+            </div>
+          </div>
+          <div class="status-heat-body">
+            <div class="status-heat-scroll">
+              <div class="status-heat-grid" id="status-heat-grid"></div>
+              <div class="status-heat-hours" id="status-heat-hours"></div>
+              <div class="status-heat-legend">
+                <span><i class="status-leg status-leg-ok"></i>Up all hour</span>
+                <span><i class="status-leg status-leg-partial"></i>Partial</span>
+                <span><i class="status-leg status-leg-bad"></i>Down</span>
+                <span><i class="status-leg status-leg-nodata"></i>No data</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header"><h2>&#128276; Event feed</h2></div>
+          <div class="status-feed" id="status-feed">
+            <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
+          </div>
+        </section>
+      </div>
+      <p class="footnote">Checked every 60 seconds from the tools server via the vanilla server-list ping. Times shown in your local timezone.</p>
+    </div>
+
     <!-- ===== VOTE PAGE ===== -->
     <div id="page-vote" class="page">
       <div class="prestige-header">
@@ -622,6 +680,6 @@
   <script src="/static/ranks.js?v=1"></script>
   <script src="/static/combobox.js?v=1"></script>
   <script src="/static/dropdown.js?v=46"></script>
-  <script src="/static/app.js?v=61"></script>
+  <script src="/static/app.js?v=62"></script>
 </body>
 </html>
