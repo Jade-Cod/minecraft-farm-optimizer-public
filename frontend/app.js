@@ -1689,8 +1689,8 @@ function renderPoliceCards() {
         <div class="prog-card-head">
           ${progObjIcon(o, 'prog-card-icon')}
           <div class="prog-card-title">
-            <span class="prog-card-name">${o.label}</span>
-            <span class="prog-card-goal">${o.goal_text || ''}</span>
+            <span class="prog-card-name">${escStatus(o.label)}</span>
+            <span class="prog-card-goal">${escStatus(o.goal_text || '')}</span>
           </div>
           <span class="prog-badge ${statusCls}">${statusTxt}</span>
         </div>
@@ -1889,7 +1889,7 @@ function renderProgressKPIs() {
   const closeEl = document.getElementById('prog-kpi-close');
   const closeSub = document.getElementById('prog-kpi-close-sub');
   if (closest) {
-    closeEl.innerHTML = `${progObjIcon(closest.o, 'inline-icon')} ${closest.o.label}`;
+    closeEl.innerHTML = `${progObjIcon(closest.o, 'inline-icon')} ${escStatus(closest.o.label)}`;
     closeSub.textContent = `${closest.s.pct.toFixed(1)}% · ${invFmt(closest.s.remaining)} inv left`;
   } else {
     closeEl.textContent = 'All complete 🎉';
@@ -1901,7 +1901,7 @@ function renderProgressKPIs() {
   const fastEl = document.getElementById('prog-kpi-fast');
   const fastSub = document.getElementById('prog-kpi-fast-sub');
   if (fastest) {
-    fastEl.innerHTML = `${progObjIcon(fastest.o, 'inline-icon')} ${fastest.o.label}`;
+    fastEl.innerHTML = `${progObjIcon(fastest.o, 'inline-icon')} ${escStatus(fastest.o.label)}`;
     fastSub.textContent = `${invFmt(fastest.s.rate)} inv/day`;
   } else {
     fastEl.textContent = '—';
@@ -3365,7 +3365,8 @@ const STATUS_REFRESH_MS = 60000;
 const STATUS_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function escStatus(s) {
-  // Version string comes from the Minecraft server itself — never trust it in HTML.
+  // Escapes untrusted text before HTML interpolation — server version strings,
+  // uploaded prestige labels/goals, anything not authored by this app.
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 

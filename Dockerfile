@@ -18,4 +18,7 @@ VOLUME ["/app/backend/data"]
 EXPOSE 8000
 
 WORKDIR /app/backend
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --proxy-headers: trust X-Forwarded-For from Caddy so rate limits and
+# analytics see the real client IP, not the proxy's. Safe because in the
+# deploy compose the app port is only reachable from the docker network.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

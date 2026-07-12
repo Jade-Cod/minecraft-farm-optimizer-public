@@ -48,12 +48,17 @@
     catch (e) { return []; }
   }
 
+  // Labels can carry user-supplied text (e.g. prestige objective names) — escape.
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   function renderItems(curVal) {
     menu.innerHTML = opts.map(([v, label], i) => {
       const sel = v === curVal;
       return `<button type="button" class="ui-menu-item${sel ? ' is-selected' : ''}" ` +
-        `role="option" aria-selected="${sel}" data-val="${v}" data-i="${i}">` +
-        `<span>${label}</span>${sel ? CHECK : ''}</button>`;
+        `role="option" aria-selected="${sel}" data-val="${esc(v)}" data-i="${i}">` +
+        `<span>${esc(label)}</span>${sel ? CHECK : ''}</button>`;
     }).join('');
   }
 

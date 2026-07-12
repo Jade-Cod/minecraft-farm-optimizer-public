@@ -6,7 +6,9 @@ from typing import Optional
 from fastapi import Depends, HTTPException, Request
 from jose import jwt, JWTError
 
-JWT_SECRET    = os.environ.get("JWT_SECRET", "dev-secret-change-me")
+JWT_SECRET = os.environ.get("JWT_SECRET", "")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET is not set — refusing to start with a forgeable default")
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 
 DB_FILE = Path(__file__).parent / "data" / "history.db"

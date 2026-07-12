@@ -29,6 +29,7 @@ from jose import jwt, JWTError
 from deps import get_current_user, require_user, JWT_SECRET, JWT_ALGORITHM
 import auth as auth_module
 import status as status_module
+import analytics as analytics_module
 
 _docs_enabled = os.environ.get("ENABLE_DOCS", "0") in ("1", "true", "True")
 app = FastAPI(
@@ -39,7 +40,7 @@ app = FastAPI(
 )
 
 # Session middleware — required for Discord OAuth state parameter
-app.add_middleware(SessionMiddleware, secret_key=os.environ.get("JWT_SECRET", "dev-secret-change-me"))
+app.add_middleware(SessionMiddleware, secret_key=JWT_SECRET)
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -66,6 +67,14 @@ async def limit_body_size(request: Request, call_next):
         if cl and int(cl) > _MAX_BODY:
             return JSONResponse(status_code=413, content={"detail": "Request body too large"})
     return await call_next(request)
+
+
+# Cookie-free usage analytics — counts hits and daily unique visitors in SQLite
+@app.middleware("http")
+async def track_analytics(request: Request, call_next):
+    response = await call_next(request)
+    analytics_module.record(request, response.status_code)
+    return response
 
 
 def _token_valid(token: Optional[str]) -> bool:

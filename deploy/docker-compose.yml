@@ -34,6 +34,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+      - caddy-logs:/var/log/caddy
     depends_on:
       - mclabs-tools
     networks:
@@ -46,3 +47,4 @@ volumes:
   mclabs-data:
   caddy-data:
   caddy-config:
+  caddy-logs:

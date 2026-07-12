@@ -1,8 +1,19 @@
 labs.faded.me {
     reverse_proxy mclabs-tools:8000
 
+    # Access logs (JSON) - analyze with: goaccess access.log --log-format=CADDY
+    log {
+        output file /var/log/caddy/access.log
+    }
+
     header {
         -Via
         -Server
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # script-src needs 'unsafe-inline': index.html uses inline onclick= handlers throughout
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://labs-mc.com https://cdn.discordapp.com; connect-src 'self'; frame-ancestors 'none'"
     }
 }
