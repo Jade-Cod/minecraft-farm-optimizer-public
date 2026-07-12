@@ -14,6 +14,6 @@ labs.faded.me {
         X-Content-Type-Options "nosniff"
         Referrer-Policy "strict-origin-when-cross-origin"
         # script-src needs 'unsafe-inline': index.html uses inline onclick= handlers throughout
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://labs-mc.com https://cdn.discordapp.com; connect-src 'self'; frame-ancestors 'none'"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://labs-mc.com https://cdn.discordapp.com; connect-src 'self' https://cloudflareinsights.com; frame-ancestors 'none'"
     }
 }
