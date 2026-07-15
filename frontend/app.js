@@ -2496,7 +2496,7 @@ function populateLabSelect() {
     mount,
     grouped: true,
     placeholder: 'Choose a compound…',
-    items: comboItems(c => c.recipe_type !== 'raw' && c.recipe && c.output_qty),
+    items: comboItems(c => c.recipe_type === 'combo' && c.recipe && c.output_qty),
     onSelect: (id) => { labSelectedId = id; renderLab(); },
   });
 }
