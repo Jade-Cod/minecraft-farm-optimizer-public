@@ -71,9 +71,9 @@
           <div class="stat-sub" id="stat-best-price">&#8212;</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Best Base $/hr</div>
-          <div class="stat-value" id="stat-dph-name">&#8212;</div>
-          <div class="stat-sub" id="stat-dph-val">&#8212;</div>
+          <div class="stat-label">Trending Down</div>
+          <div class="stat-value" id="stat-down">&#8212;</div>
+          <div class="stat-sub" id="stat-down-pct">&#8212;</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Best Craft Profit</div>
@@ -133,7 +133,7 @@
             <button type="button" id="sort-select" class="ui-select"
               aria-haspopup="listbox" aria-expanded="false" aria-label="Sort"
               data-value="price" data-onpick="setSortOption"
-              data-options='[["price","Sort: Price"],["profit","Sort: Craft Profit"],["change","Sort: % Change"],["dph","Sort: $/hr"]]'>
+              data-options='[["price","Sort: Price"],["profit","Sort: Craft Profit"],["change","Sort: % Change"]]'>
               <span class="ui-select-text">Sort: Price</span>
               <svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
@@ -150,16 +150,15 @@
                 <th>Price</th>
                 <th>Change</th>
                 <th>%</th>
-                <th>$/hr</th>
                 <th>Craft +/-</th>
               </tr>
             </thead>
             <tbody id="table-body">
-              <tr><td colspan="9" class="skel-cell"><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span></td></tr>
+              <tr><td colspan="8" class="skel-cell"><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span><span class="skel-line"></span></td></tr>
             </tbody>
           </table>
         </div>
-        <p class="footnote">$/hr = per plant, raw crops only (vanilla grow times) &nbsp;|&nbsp; Craft +/- = net profit per craft vs selling ingredients raw</p>
+        <p class="footnote">Craft +/- = net profit per craft vs selling ingredients raw</p>
       </section>
     </div>
 

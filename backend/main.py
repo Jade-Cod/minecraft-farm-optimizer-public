@@ -269,11 +269,6 @@ def load_crops() -> list[dict]:
             c["change"] = None
             c["change_pct"] = None
 
-        if c["recipe_type"] == "raw" and c["current_price"] and c["grow_time_min"]:
-            c["dph"] = round(c["current_price"] / (c["grow_time_min"] / 60), 2)
-        else:
-            c["dph"] = None
-
         c["craft_profit"] = None
         c["craft_input_cost"] = None
         c["craft_output_value"] = None
@@ -306,8 +301,6 @@ def get_crops(category: Optional[str] = None, sort: str = "price"):
         return sorted(crops, key=lambda x: (x["current_price"] or 0), reverse=True)
     if sort == "change":
         return sorted(crops, key=lambda x: (x["change_pct"] or 0), reverse=True)
-    if sort == "dph":
-        return sorted(crops, key=lambda x: (x["dph"] or 0), reverse=True)
     if sort == "profit":
         return sorted(crops, key=lambda x: (x["craft_profit"] or 0), reverse=True)
     return crops
@@ -317,11 +310,9 @@ def get_crops(category: Optional[str] = None, sort: str = "price"):
 def get_top_picks():
     crops = load_crops()
     with_price = [c for c in crops if c["current_price"] is not None]
-    raw = [c for c in with_price if c["recipe_type"] == "raw"]
     combos_with_profit = [c for c in with_price if c["craft_profit"] is not None]
     return {
         "best_price": max(with_price, key=lambda x: x["current_price"]),
-        "best_base_dph": max(raw, key=lambda x: x["dph"] or 0),
         "best_craft_profit": max(combos_with_profit, key=lambda x: x["craft_profit"]) if combos_with_profit else None,
         "trending_up": sorted([c for c in with_price if (c["change"] or 0) > 0], key=lambda x: x["change_pct"], reverse=True)[:3],
         "trending_down": sorted([c for c in with_price if (c["change"] or 0) < 0], key=lambda x: x["change_pct"])[:3],
@@ -856,7 +847,7 @@ async def sync_prices(request: Request, user: dict = Depends(require_user)):
 
     save_fields = {"id", "name", "minecraft_name", "emoji", "icon", "category",
                    "recipe_type", "recipe", "output_qty", "current_price",
-                   "previous_price", "grow_time_min"}
+                   "previous_price"}
     save_data = [{k: v for k, v in c.items() if k in save_fields} for c in crops]
     tmp = DATA_FILE.with_suffix(".json.tmp")
     with open(tmp, "w") as f:
