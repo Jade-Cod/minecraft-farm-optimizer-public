@@ -304,20 +304,25 @@ async function loadTopStats() {
     if (data.best_craft_profit) {
       const p = data.best_craft_profit;
       document.getElementById('stat-profit-name').innerHTML  = _statIcon(p) + ' ' + p.name;
-      document.getElementById('stat-profit-val').textContent =
-        '+$' + p.craft_profit.toFixed(2) + ' per craft (' + p.output_qty + 'x out)';
+      const profitEl = document.getElementById('stat-profit-val');
+      profitEl.textContent = '+$' + p.craft_profit.toFixed(2) + ' per craft (' + p.output_qty + 'x out)';
+      profitEl.classList.add(p.craft_profit >= 0 ? 'change-pos' : 'change-neg');
     }
 
     if (data.trending_up[0]) {
       const t = data.trending_up[0];
       document.getElementById('stat-up').innerHTML  = _statIcon(t) + ' ' + t.name;
-      document.getElementById('stat-up-pct').textContent = '+' + t.change_pct + '% this week';
+      const upEl = document.getElementById('stat-up-pct');
+      upEl.textContent = '▲ +' + t.change_pct + '% this week';
+      upEl.classList.add('change-pos');
     }
 
     if (data.trending_down[0]) {
       const t = data.trending_down[0];
       document.getElementById('stat-down').innerHTML  = _statIcon(t) + ' ' + t.name;
-      document.getElementById('stat-down-pct').textContent = t.change_pct + '% this week';
+      const downEl = document.getElementById('stat-down-pct');
+      downEl.textContent = '▼ ' + t.change_pct + '% this week';
+      downEl.classList.add('change-neg');
     }
   } catch (_) {}
 }
