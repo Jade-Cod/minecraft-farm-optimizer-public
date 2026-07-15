@@ -276,7 +276,7 @@ async function loadCrops() {
     buildContributionMap();
   } catch (e) {
     const tb = document.getElementById('table-body');
-    if (tb) tb.innerHTML = `<tr><td colspan="9" class="loading">Failed to load — is the server running?</td></tr>`;
+    if (tb) tb.innerHTML = `<tr><td colspan="8" class="loading">Failed to load — is the server running?</td></tr>`;
   }
 }
 
@@ -301,20 +301,28 @@ async function loadTopStats() {
     document.getElementById('stat-best-name').innerHTML  = _statIcon(data.best_price) + ' ' + data.best_price.name;
     document.getElementById('stat-best-price').textContent = '$' + data.best_price.current_price.toFixed(2) + ' per unit';
 
-    document.getElementById('stat-dph-name').innerHTML  = _statIcon(data.best_base_dph) + ' ' + data.best_base_dph.name;
-    document.getElementById('stat-dph-val').textContent = '$' + data.best_base_dph.dph.toFixed(2) + '/hr per plant';
-
     if (data.best_craft_profit) {
       const p = data.best_craft_profit;
       document.getElementById('stat-profit-name').innerHTML  = _statIcon(p) + ' ' + p.name;
-      document.getElementById('stat-profit-val').textContent =
-        '+$' + p.craft_profit.toFixed(2) + ' per craft (' + p.output_qty + 'x out)';
+      const profitEl = document.getElementById('stat-profit-val');
+      profitEl.textContent = '+$' + p.craft_profit.toFixed(2) + ' per craft (' + p.output_qty + 'x out)';
+      profitEl.classList.add(p.craft_profit >= 0 ? 'change-pos' : 'change-neg');
     }
 
     if (data.trending_up[0]) {
       const t = data.trending_up[0];
       document.getElementById('stat-up').innerHTML  = _statIcon(t) + ' ' + t.name;
-      document.getElementById('stat-up-pct').textContent = '+' + t.change_pct + '% this week';
+      const upEl = document.getElementById('stat-up-pct');
+      upEl.textContent = '▲ +' + t.change_pct + '% this week';
+      upEl.classList.add('change-pos');
+    }
+
+    if (data.trending_down[0]) {
+      const t = data.trending_down[0];
+      document.getElementById('stat-down').innerHTML  = _statIcon(t) + ' ' + t.name;
+      const downEl = document.getElementById('stat-down-pct');
+      downEl.textContent = '▼ ' + t.change_pct + '% this week';
+      downEl.classList.add('change-neg');
     }
   } catch (_) {}
 }
@@ -408,7 +416,7 @@ function renderTable(crops) {
   if (!tbody) return;
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="loading">No results</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="loading">No results</td></tr>`;
     return;
   }
 
@@ -435,10 +443,6 @@ function renderTable(crops) {
     const outQty = c.output_qty ? `<span class="out-qty">${c.output_qty}x</span>` : '<span class="dph-na">—</span>';
     const price = c.current_price != null ? `$${c.current_price.toFixed(2)}` : '<span class="dph-na">—</span>';
 
-    const dphCell = c.dph != null
-      ? `<span class="dph">$${c.dph.toFixed(2)}</span>`
-      : `<span class="dph-na">—</span>`;
-
     let profitCell = '<span class="dph-na">—</span>';
     if (c.craft_profit != null) {
       const cls = c.craft_profit > 0 ? 'change-pos' : c.craft_profit < 0 ? 'change-neg' : 'change-neu';
@@ -464,7 +468,6 @@ function renderTable(crops) {
       <td class="price">${price}</td>
       <td class="${changeClass}">${changeStr}</td>
       <td class="${changeClass}">${changePctStr}</td>
-      <td>${dphCell}</td>
       <td>${profitCell}</td>
     </tr>`;
   }).join('');
@@ -2181,14 +2184,9 @@ function buildTooltipHtml(crop) {
 
   // Raw crop
   if (crop.recipe_type === 'raw') {
-    const dphRow = crop.dph != null
-      ? `<div class="pt-row"><span class="pt-label">$/hr</span><span class="pt-val pt-yellow">$${crop.dph.toFixed(2)}</span></div>` : '';
-    const growRow = crop.grow_time_min != null
-      ? `<div class="pt-row"><span class="pt-label">Grow time</span><span class="pt-val">${crop.grow_time_min}m</span></div>` : '';
     return `<div class="pt-header">${iconHtml}<div><div class="pt-name">${crop.name}</div><div class="pt-sub">${crop.minecraft_name || 'Raw crop'}</div></div></div>
       <div class="pt-divider"></div>
-      <div class="pt-row"><span class="pt-label">Sell price</span><span class="pt-val pt-green">$${crop.current_price?.toFixed(2) ?? '—'}</span></div>
-      ${growRow}${dphRow}`;
+      <div class="pt-row"><span class="pt-label">Sell price</span><span class="pt-val pt-green">$${crop.current_price?.toFixed(2) ?? '—'}</span></div>`;
   }
 
   // No recipe known
