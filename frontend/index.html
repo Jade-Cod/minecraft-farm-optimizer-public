@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=63" />
+  <link rel="stylesheet" href="/static/style.css?v=64" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -172,14 +172,25 @@
       <!-- Boosters + demand -->
       <section class="card dash-booster-card">
         <div class="dash-booster-row">
-          <button class="dash-booster-btn" id="server-booster-btn" onclick="toggleServerBooster()">
-            <span class="dash-booster-icon">⚡</span>
-            <div class="dash-booster-text">
-              <span class="dash-booster-name">Server 2× Booster</span>
-              <span class="dash-booster-desc">Doubles all sell prices · no prestige effect</span>
+          <div class="dash-booster-btn dash-booster-tiered" id="server-booster-btn">
+            <div class="dash-booster-head">
+              <span class="dash-booster-icon">⚡</span>
+              <div class="dash-booster-text">
+                <span class="dash-booster-name">Server Booster</span>
+                <span class="dash-booster-desc">Global sell multiplier · no prestige effect</span>
+              </div>
             </div>
-            <span class="dash-booster-pill" id="server-booster-pill">OFF</span>
-          </button>
+            <div class="dash-tier-row" id="dash-tier-row" role="radiogroup" aria-label="Server booster multiplier" data-off="true">
+              <span class="dash-tier-ind" aria-hidden="true"></span>
+              <button type="button" class="dash-tier-btn" role="radio" aria-checked="true"  onclick="setServerMult(1)">OFF</button>
+              <button type="button" class="dash-tier-btn" role="radio" aria-checked="false" onclick="setServerMult(1.5)">1.5×</button>
+              <button type="button" class="dash-tier-btn" role="radio" aria-checked="false" onclick="setServerMult(1.75)">1.75×</button>
+              <button type="button" class="dash-tier-btn" role="radio" aria-checked="false" onclick="setServerMult(2)">2×</button>
+              <button type="button" class="dash-tier-btn" role="radio" aria-checked="false" onclick="setServerMult(2.25)">2.25×</button>
+              <button type="button" class="dash-tier-btn" role="radio" aria-checked="false" onclick="setServerMult(2.5)">2.5×</button>
+              <button type="button" class="dash-tier-btn" role="radio" aria-checked="false" onclick="setServerMult(3)">3×</button>
+            </div>
+          </div>
           <button class="dash-booster-btn" id="personal-booster-btn" onclick="togglePersonalBooster()">
             <span class="dash-booster-icon">✨</span>
             <div class="dash-booster-text">
@@ -687,6 +698,6 @@
   <script src="/static/ranks.js?v=1"></script>
   <script src="/static/combobox.js?v=1"></script>
   <script src="/static/dropdown.js?v=46"></script>
-  <script src="/static/app.js?v=64"></script>
+  <script src="/static/app.js?v=65"></script>
 </body>
 </html>

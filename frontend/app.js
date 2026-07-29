@@ -239,6 +239,9 @@ async function init() {
   await loadTopStats();
   loadDashState();
   populateDashSelect();
+  // navigate() ran above before saved state and allCrops existed, so a cold load
+  // straight onto the calculator painted defaults. Repaint now that both are here.
+  if (getPage() === 'calculator') renderDash();
   populateLabSelect();
   renderPrestige();
   if (window.authUser && !window.authUser.guest) {
@@ -550,7 +553,7 @@ async function syncPrices() {
 let dashItems       = [];
 let dashCombo       = null;
 let graphCombo      = null;
-let serverBooster   = false;
+let serverMult      = 1.0;   // active global booster tier; 1.0 = none
 let personalBooster = false;
 let priceDemand     = 1.0;   // dealer Sell rate (from /rates), applied before boosters
 let prestigeDemand  = 1.0;   // dealer Prestige rate
@@ -560,6 +563,11 @@ const DASH_DC = ITEMS_PER_DC;
 
 // Chemical purity multipliers — Value/Progress/Score branches, level 0–3 (wiki: Companies#Purity).
 const PURITY_MULT = [1.00, 1.15, 1.30, 1.50];
+
+// Global (server) booster tiers. Only one can run at a time in-game, and they
+// affect sell price only — prestige and score ignore boosters entirely.
+const SERVER_MULTS = [1.5, 1.75, 2, 2.25, 2.5, 3];
+const TIER_VALUES  = [1, ...SERVER_MULTS];   // index 0 = OFF; drives the picker
 
 // Dealer rates from the wiki (Dealers). Each dealer has separate sell/prestige/score
 // multipliers; "—" on the wiki defaults to 1.0. Rates are dynamic in-game — presets are
@@ -576,7 +584,7 @@ const DEALERS = [
 const DEMAND_MIN = 0.5, DEMAND_MAX = 2.0;
 
 function getDashMult() {
-  return (serverBooster ? 2.0 : 1.0) * (personalBooster ? 1.1 : 1.0);
+  return serverMult * (personalBooster ? 1.1 : 1.0);
 }
 
 // Compact number: 1.2K above a thousand, rounded integer below.
@@ -584,10 +592,18 @@ function abbrevNum(n) {
   return n >= 1000 ? (n / 1000).toFixed(1) + 'K' : Math.round(n).toString();
 }
 
+// Read a stored booster tier. 'true'/'false' are the legacy on/off values from
+// when this was a fixed 2× toggle — anything unrecognised falls back to off.
+function parseServerMult(raw) {
+  if (raw === 'true') return 2.0;
+  const v = parseFloat(raw);
+  return SERVER_MULTS.includes(v) ? v : 1.0;
+}
+
 function loadDashState() {
   try {
     dashItems       = JSON.parse(localStorage.getItem('dash_items') || '[]');
-    serverBooster   = localStorage.getItem('dash_server')    === 'true';
+    serverMult      = parseServerMult(localStorage.getItem('dash_server'));
     personalBooster = localStorage.getItem('dash_personal')  === 'true';
     priceDemand     = parseFloat(localStorage.getItem('dash_price_demand'))    || 1.0;
     prestigeDemand  = parseFloat(localStorage.getItem('dash_prestige_demand')) || 1.0;
@@ -600,7 +616,7 @@ function loadDashState() {
 
 function saveDashState() {
   localStorage.setItem('dash_items',           JSON.stringify(dashItems));
-  localStorage.setItem('dash_server',          serverBooster);
+  localStorage.setItem('dash_server',          serverMult);
   localStorage.setItem('dash_personal',        personalBooster);
   localStorage.setItem('dash_price_demand',    priceDemand);
   localStorage.setItem('dash_prestige_demand', prestigeDemand);
@@ -638,7 +654,7 @@ function setDealer(id) {
   renderDash();
 }
 
-function toggleServerBooster()   { serverBooster   = !serverBooster;   saveDashState(); renderDash(); }
+function setServerMult(v)        { serverMult      = SERVER_MULTS.includes(v) ? v : 1.0; saveDashState(); renderDash(); }
 function togglePersonalBooster() { personalBooster = !personalBooster; saveDashState(); renderDash(); }
 
 // Build the lightweight item shape the searchable combobox consumes.
@@ -750,12 +766,19 @@ function renderDash() {
   if (scdEl && document.activeElement !== scdEl) scdEl.value = scoreDemand.toFixed(2);
   if (dlEl) setDealerTrigger(dlEl);
 
-  // Booster UI
-  document.getElementById('server-booster-btn')?.classList.toggle('active', serverBooster);
+  // Booster UI — move the tier indicator and sync radio state
+  const tierRow = document.getElementById('dash-tier-row');
+  if (tierRow) {
+    const tierIdx = TIER_VALUES.indexOf(serverMult);
+    tierRow.style.setProperty('--tier-i', tierIdx);
+    tierRow.dataset.off = String(serverMult === 1);
+    tierRow.querySelectorAll('.dash-tier-btn').forEach((btn, n) => {
+      btn.setAttribute('aria-checked', String(n === tierIdx));
+    });
+  }
+  document.getElementById('server-booster-btn')?.classList.toggle('active', serverMult !== 1);
   document.getElementById('personal-booster-btn')?.classList.toggle('active', personalBooster);
-  const sbPill = document.getElementById('server-booster-pill');
   const pbPill = document.getElementById('personal-booster-pill');
-  if (sbPill) sbPill.textContent = serverBooster   ? 'ON' : 'OFF';
   if (pbPill) pbPill.textContent = personalBooster ? 'ON' : 'OFF';
   const multEl = document.getElementById('dash-mult-val');
   if (multEl) multEl.textContent = mult.toFixed(2) + '×';
