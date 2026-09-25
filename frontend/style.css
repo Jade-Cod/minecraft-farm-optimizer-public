@@ -115,6 +115,17 @@ header {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+@media (max-width: 700px) {
+  /* Compact phone header: logo + actions share the first row, the nav strip
+     takes the full second row. Roughly half the height of the stacked layout. */
+  .header-inner { padding: 8px 16px; gap: 6px 10px; }
+  .logo { font-size: 16px; gap: 6px; }
+  .logo-img { width: 24px; height: 24px; }
+  .header-actions { order: 1; gap: 8px; }
+  .nav-tabs { order: 2; flex-basis: 100%; }
+  .auth-btn-long, #sync-label, .sync-status, .user-name { display: none; }
+  #sync-btn { padding: 7px 11px; }
+}
 
 /* ── Nav tabs ── */
 .nav-tabs {

@@ -146,6 +146,12 @@ function navigate() {
   });
   const el = document.getElementById('page-' + page);
   if (el) el.classList.add('active');
+  // A new page starts at the top, not wherever the last one was scrolled to.
+  // 'instant' overrides html's smooth scroll-behavior.
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  // On phones the nav strip scrolls sideways; keep the current tab visible.
+  document.querySelector('.nav-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  closeNavDropdown();
 
   // Gate vote/prestige: activate the page so the panel has a container, then show it.
   if (GATED_PAGES.has(page) && (!window.authUser || window.authUser.guest)) {
@@ -191,8 +197,8 @@ window.addEventListener('hashchange', navigate);
 
 let navDropdownOpen = false;
 
-// The menu is position:fixed (so it isn't clipped by .nav-tabs' scroll box), so
-// anchor it under the trigger and keep it on-screen.
+// The menu is position:fixed and sits outside .nav-tabs (see index.html) so the
+// scroll box can't clip it; anchor it under the trigger and keep it on-screen.
 function positionNavDropdown() {
   const menu = document.getElementById('nav-calc-menu');
   const trig = document.getElementById('nav-calc-trigger');
@@ -228,6 +234,9 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && navDropdownOpen) closeNavDropdown();
 });
+// The menu is anchored to the trigger once, on open; if the nav strip scrolls
+// sideways under it the menu would float detached, so just close it.
+document.querySelector('.nav-tabs')?.addEventListener('scroll', closeNavDropdown, { passive: true });
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
