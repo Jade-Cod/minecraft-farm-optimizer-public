@@ -897,4 +897,8 @@ if frontend_dir.exists():
 
     @app.get("/")
     def index():
-        return FileResponse(str(frontend_dir / "index.html"))
+        # no-cache: browsers re-check instead of guessing a lifetime, so a new deploy's ?v= asset
+        # links reach returning visitors on their next load.
+        # ponytail: FileResponse never answers 304, so it's a ~9 KB gzipped refetch per visit; add
+        # an If-None-Match check if that ever matters.
+        return FileResponse(str(frontend_dir / "index.html"), headers={"Cache-Control": "no-cache"})

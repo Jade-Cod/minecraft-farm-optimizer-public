@@ -197,7 +197,8 @@ function navigate() {
     renderStatus();
     positionTabPill('#status-range-tabs');
   }
-  if (CODEX_PAGES.has(page)) {
+  // an old cached index.html has no codex.js; don't let that break every other page
+  if (CODEX_PAGES.has(page) && window.codexShow) {
     window.codexShow(page);
   }
 }
