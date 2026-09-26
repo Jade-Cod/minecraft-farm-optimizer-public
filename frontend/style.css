@@ -107,14 +107,6 @@ header {
   margin-left: auto;
   flex-shrink: 0;
 }
-.sync-status {
-  font-size: 12px;
-  color: var(--muted);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 @media (max-width: 700px) {
   /* Compact phone header: logo + actions share the first row, the nav strip
      takes the full second row. Roughly half the height of the stacked layout. */
@@ -123,8 +115,7 @@ header {
   .logo-img { width: 24px; height: 24px; }
   .header-actions { order: 1; gap: 8px; }
   .nav-tabs { order: 2; flex-basis: 100%; }
-  .auth-btn-long, #sync-label, .sync-status, .user-name { display: none; }
-  #sync-btn { padding: 7px 11px; }
+  .auth-btn-long, .user-name { display: none; }
 }
 
 /* ── Nav tabs ── */
@@ -293,13 +284,6 @@ main {
   .btn-secondary:hover { background: rgba(255,255,255,0.12); opacity: 1; }
 }
 
-/* Sync button: spin the icon while a price refresh is in flight. Linear +
-   fast (0.7s) so loading reads as quick (perceived-performance). */
-#sync-btn { display: inline-flex; align-items: center; gap: 6px; }
-.sync-icon { display: inline-block; line-height: 1; }
-.btn.syncing { opacity: 0.85; }
-.btn.syncing .sync-icon { animation: spin 0.7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Stats row ── */
 .stats-row {

@@ -14,10 +14,15 @@ git -C "$REPO_ROOT" pull
 if [ -f "$DB_PATH" ]; then
   cp "$DB_PATH" "${DB_PATH}.bak-$(date +%Y%m%d-%H%M)"
   echo "DB backed up."
+  # Keep the 5 newest pre-deploy backups.
+  ls -1t "${DB_PATH}".bak-* 2>/dev/null | tail -n +6 | xargs -r rm -f
 fi
 
 # 3. Rebuild and restart (deploy/docker-compose.yml is standalone — includes Caddy)
 docker compose -f "$DEPLOY_DIR/docker-compose.yml" up -d --build
+
+# Each --build leaves the previous image behind; drop the unused ones.
+docker image prune -f
 
 echo ""
 echo "Done. https://labs.faded.me"

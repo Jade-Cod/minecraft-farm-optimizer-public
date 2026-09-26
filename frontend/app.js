@@ -532,24 +532,22 @@ function reloadTable() { loadCrops(); }
 
 // ── Sync ──────────────────────────────────────────────────────────────────────
 
-async function syncPrices() {
-  const btn = document.getElementById('sync-btn');
-  const status = document.getElementById('sync-status');
-  btn.disabled = true;
-  btn.classList.add('syncing');
-  const syncLabel = document.getElementById('sync-label');
-  if (syncLabel) syncLabel.textContent = 'Syncing…';
-  status.textContent = '';
-  status.title = '';
+// Prices sync from the sheet on the server by themselves (backend/sheet_sync.py).
+// The page re-checks every PRICE_CHECK_MS while visible and when you come back
+// to the tab, and only redraws when a price actually changed.
+const PRICE_CHECK_MS = 10 * 60 * 1000;
+let lastPriceCheck = Date.now();
+
+const priceSignature = (crops) => crops.map(c => c.id + ':' + c.current_price).sort().join('|');
+
+async function refreshPricesIfChanged() {
+  lastPriceCheck = Date.now();
   try {
-    const res = await apiFetch(`${API}/api/sync`, { method: 'POST' });
-    const data = await res.json();
-    const statusText = `Updated ${data.updated} prices · ${data.synced_at}`;
-    status.textContent = statusText;
-    status.title = statusText;
+    const res = await apiFetch(`${API}/api/crops`);
+    const fresh = await res.json();
+    if (priceSignature(fresh) === priceSignature(allCrops)) return;
     await loadCrops();
     await loadTopStats();
-    // Refresh graphs if they've been initialized
     if (graphsInitialized) {
       graphHistory = null;
       graphsInitialized = false;
@@ -558,15 +556,18 @@ async function syncPrices() {
       initGraphs();
     }
   } catch (e) {
-    status.textContent = 'Sync failed';
-    status.title = 'Sync failed';
-    console.error(e);
-  } finally {
-    btn.disabled = false;
-    btn.classList.remove('syncing');
-    if (syncLabel) syncLabel.textContent = 'Sync Prices';
+    console.error('Price refresh failed', e); // keep showing the prices already on screen
   }
 }
+
+setInterval(() => {
+  if (document.visibilityState === 'visible') refreshPricesIfChanged();
+}, PRICE_CHECK_MS);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - lastPriceCheck > PRICE_CHECK_MS) {
+    refreshPricesIfChanged();
+  }
+});
 
 // ── Revenue dashboard calculator ──────────────────────────────────────────────
 
