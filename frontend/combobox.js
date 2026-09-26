@@ -49,6 +49,10 @@
     const grouped = !!opts.grouped;
     const placeholder = opts.placeholder || 'Search…';
     const onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function () {};
+    // Touch screens: a pick-only list (searchable: false) shouldn't raise the
+    // keyboard, and the keyboard should drop once something is picked.
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    const pickOnly = opts.searchable === false && isTouch;
 
     let selectedId = '';
     let open = false;
@@ -60,7 +64,8 @@
       '<div class="cbx-field">'
       + '<img class="cbx-field-icon" alt="" hidden />'
       + `<input class="cbx-input" type="text" role="combobox" aria-autocomplete="list" `
-      + `aria-expanded="false" autocomplete="off" spellcheck="false" placeholder="${placeholder}" />`
+      + `aria-expanded="false" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" `
+      + `${pickOnly ? 'readonly inputmode="none" ' : ''}placeholder="${placeholder}" />`
       + '</div>'
       + '<ul class="cbx-list" role="listbox" hidden></ul>';
 
@@ -167,6 +172,7 @@
       selectedId = id;
       setFieldDisplay(id);
       closeList(false);
+      if (isTouch) input.blur();
       onSelect(id);
     }
 

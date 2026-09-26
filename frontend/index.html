@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=66" />
+  <link rel="stylesheet" href="/static/style.css?v=70" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -131,7 +131,7 @@
             <button class="tab" onclick="setPriceTab('combo', this)">Combos</button>
           </div>
           <div class="table-controls">
-            <input type="text" id="search" placeholder="Search compound..." oninput="filterTable()" />
+            <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" id="search" placeholder="Search compound..." oninput="filterTable()" />
             <button type="button" id="sort-select" class="ui-select"
               aria-haspopup="listbox" aria-expanded="false" aria-label="Sort"
               data-value="price" data-onpick="setSortOption"
@@ -406,7 +406,7 @@
         <div class="card-header">
           <h2>&#129518; All Compounds</h2>
           <div class="grid-toolbar">
-            <input type="text" id="spark-search" class="spark-search" placeholder="Search..." oninput="renderSparklines()" />
+            <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" id="spark-search" class="spark-search" placeholder="Search..." oninput="renderSparklines()" />
             <button type="button" id="spark-sort" class="ui-select"
               aria-haspopup="listbox" aria-expanded="false" aria-label="Sort"
               data-value="change" data-onpick="setSparkSort"
@@ -698,8 +698,8 @@
   </main>
 
   <script src="/static/ranks.js?v=1"></script>
-  <script src="/static/combobox.js?v=1"></script>
+  <script src="/static/combobox.js?v=2"></script>
   <script src="/static/dropdown.js?v=46"></script>
-  <script src="/static/app.js?v=66"></script>
+  <script src="/static/app.js?v=67"></script>
 </body>
 </html>

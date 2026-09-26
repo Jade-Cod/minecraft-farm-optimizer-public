@@ -3351,6 +3351,7 @@ function buildRankCombo(mountId, items, placeholder) {
   return createCompoundCombobox({
     mount: document.getElementById(mountId),
     grouped: false,
+    searchable: false, // short fixed lists; on phones pick, don't type
     placeholder,
     items,
     onSelect: () => recompute(true, true), // selection is occasional — animate + redraw path
