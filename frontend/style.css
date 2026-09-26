@@ -331,6 +331,13 @@ main {
    the four cards' icons line up on a consistent baseline. */
 .stats-row .stat-value { display: flex; align-items: center; gap: 6px; }
 .stats-row .stat-value .table-icon { margin-right: 0; flex-shrink: 0; }
+.stat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) {
+  /* Two cards per row leaves ~140px for icon + name; 18px mono only fits
+     ~9 characters, and names like Whearootinide are 13. */
+  .stats-row .stat-value { font-size: 14px; letter-spacing: -0.3px; }
+  .stat-card { padding: 14px 12px; }
+}
 
 /* ── Card ── */
 .card {
@@ -1745,6 +1752,17 @@ body.drawer-open { overflow: hidden; }
 }
 .dash-mult-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
 .dash-mult-val { font-family: var(--font-mono); font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -1px; color: var(--yellow); line-height: 1; }
+@media (max-width: 700px) {
+  /* Stack the booster row: the personal toggle squeezed beside the mult box
+     wrapped its label onto five lines, and its active tint ended in a hard
+     edge against the untinted box. Each part gets its own full-width row. */
+  .dash-booster-btn {
+    flex-basis: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .dash-mult-display { flex-basis: 100%; flex-direction: row; justify-content: space-between; padding: 12px 20px; }
+}
 
 .dash-add-bar { display: flex; gap: 10px; align-items: center; }
 .dash-select {
@@ -2438,6 +2456,16 @@ body.drawer-open { overflow: hidden; }
 .lab-ing-empty { padding: 14px 0; color: var(--muted); font-size: 13.5px; }
 /* Input mode: an ingredient already fully covered by what you have. */
 .lab-ing-done { font-size: 13px; font-weight: 700; color: var(--green); flex-shrink: 0; }
+@media (max-width: 700px) {
+  /* Mode toggle: fill the card with two equal halves and let the long labels
+     wrap, instead of running past the card and the screen edge. */
+  .lab-mode-toggle { width: 100%; }
+  .lab-mode-btn { white-space: normal; line-height: 1.25; }
+  /* "have … · need …" drops under the name rather than running into the
+     amount / "✓ all used" on the right. */
+  .lab-ing-left { flex-wrap: wrap; row-gap: 2px; }
+  .lab-ing-ratio { white-space: normal; }
+}
 
 /* The answer: how much you end up with. Full-bleed footer. */
 .lab-produce {
@@ -3160,7 +3188,7 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   gap: 20px;
   align-items: start;
 }
-.status-heat-body { padding: 16px 18px 14px; overflow-x: auto; }
+.status-heat-body { padding: 16px 18px 0; overflow-x: auto; }
 .status-heat-scroll { min-width: 560px; }
 .status-heat-grid {
   display: grid;
@@ -3176,6 +3204,16 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   padding-right: 4px;
 }
 .status-heat-cell { aspect-ratio: 1; border-radius: 3px; }
+@media (max-width: 700px) {
+  /* The grid scrolls sideways on phones; keep Mon–Sun pinned so each row
+     stays readable. Solid backing so cells slide under, not through. */
+  .status-heat-day { position: sticky; left: 0; z-index: 1; background: #25262c; }
+  /* Sticky insets respect the scroll box's padding, so cells would peek
+     through the 18px gap left of the labels. Move that gap into the label
+     column instead so the pinned strip starts at the card edge. */
+  .status-heat-body { padding-left: 0; }
+  .status-heat-grid, .status-heat-hours { grid-template-columns: 52px repeat(24, 1fr); }
+}
 @media (hover: hover) and (pointer: fine) {
   .status-heat-cell:hover { outline: 1px solid rgba(255,255,255,0.4); }
 }
@@ -3196,11 +3234,12 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   text-align: center;
   font-family: var(--font-mono);
 }
+/* Outside the scroll box so it stays put when the grid scrolls on phones. */
 .status-heat-legend {
   display: flex;
   gap: 14px;
   align-items: center;
-  margin-top: 12px;
+  padding: 12px 18px 14px;
   font-size: 11px;
   color: var(--muted);
   flex-wrap: wrap;
