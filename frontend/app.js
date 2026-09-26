@@ -127,7 +127,7 @@ function getPage() {
 }
 
 const GATED_PAGES = new Set(['vote', 'prestige']);
-const CALC_PAGES = new Set(['calculator', 'sushi', 'lab']);
+const CALC_PAGES = new Set(['calculator', 'sushi', 'lab', 'ranks']);
 
 function navigate() {
   const page = getPage();
@@ -3185,24 +3185,27 @@ async function renderVoting() {
 }
 
 // ── Ranks page ────────────────────────────────────────────────────────────────
-// "How much more money to reach a target rank?" All rank/cost data and the pure
-// math live in window.RANKS (ranks.js); this section is only wiring + display.
+// "How much money to reach my goal, and what do I get?" for the Chem and Cop paths.
+// All rank data and the pure math live in window.RANKS (ranks.js); this section is
+// only wiring + display.
 
 let ranksInitialized = false;
 let ranksCombos = null; // { curP, curR, tgtP, tgtR } combobox handles
+let ranksTrack = 'chem';
 
 const RANKS_COUNTUP_MS = 320; // motion budget — stays under the project's ~320ms cap
+// Default goal per path: a full no-prestige run (first rank -> last rank).
+const RANKS_DEFAULTS = { cur: ['0', '0'], tgt: ['0', '12'] };
 
 function ranksFmtMoney(n) {
   return '$' + Math.round(Math.max(0, n)).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
-function ranksFmtPct(p) {
-  const v = Math.max(0, Math.min(100, p));
-  if (v === 0 || v === 100) return Math.round(v) + '%';
-  if (v < 1) return v.toFixed(2) + '%';
-  if (v < 10) return v.toFixed(1) + '%';
-  return Math.round(v) + '%';
+// Compact money for the "You have $750k" line.
+function ranksFmtShort(n) {
+  if (n >= 1e6) return '$' + +(n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + +(n / 1e3).toFixed(1) + 'k';
+  return ranksFmtMoney(n);
 }
 
 function prefersReducedMotion() {
@@ -3238,140 +3241,131 @@ function ranksEscape(s) {
   ));
 }
 
-// The cumulative "rewards along the way": every rankup from the current position
-// to the target, grouped by prestige tier, each with its step cost and unlock.
-function renderRanksPath(curP, curR, tgtP, tgtR) {
-  const mount = document.getElementById('ranks-rewards');
-  const chip = document.getElementById('ranks-rewards-rank');
-  if (!mount) return;
-  const R = window.RANKS;
+const ranksPlural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
 
-  if (chip) {
-    const tname = (tgtR !== '' && R) ? R.RANK_ORDER[Number(tgtR)] : '';
-    chip.textContent = tname ? '→ ' + tname : '';
-  }
-
-  const path = R ? R.rankupPath(curP, curR, tgtP, tgtR) : { ok: false };
-  if (!path.ok || !path.steps.length) {
-    mount.innerHTML = '<p class="ranks-rewards-note">Pick a target ahead of your current rank to see everything you’ll unlock on the way.</p>';
-    return;
-  }
-
-  // Group consecutive steps by prestige tier (preserves ladder order).
-  const groups = [];
-  path.steps.forEach((s) => {
-    let g = groups[groups.length - 1];
-    if (!g || g.prestige !== s.prestige) {
-      g = { prestige: s.prestige, label: s.prestigeLabel, steps: [], sum: 0 };
-      groups.push(g);
-    }
-    g.steps.push(s);
-    g.sum += s.cost;
-  });
-
-  let stepNo = 0; // global index, for capped stagger delay
-  const STAGGER_CAP = 10;
-  let html = '<div class="ranks-path">';
-  groups.forEach((g) => {
-    html += '<div class="ranks-path-group">'
-      + '<div class="ranks-path-group-head">'
-      + '<span class="ranks-path-tier">' + ranksEscape(g.label) + '</span>'
-      + '<span class="ranks-path-tier-sum">' + ranksFmtMoney(g.sum) + '</span>'
-      + '</div>';
-    const paid = g.steps.filter((s) => s.cost > 0);
-    if (!paid.length) {
-      html += '<p class="ranks-path-note">Prestige up — no rankup cost.</p>';
-    } else {
-      html += '<ol class="ranks-path-steps">';
-      paid.forEach((s, idx) => {
-        const isTarget = s.rankName === (R.RANK_ORDER[Number(tgtR)]) && s.prestige === String(tgtP);
-        const delay = Math.min(stepNo, STAGGER_CAP) * 35;
-        stepNo++;
-        const lastInGroup = idx === paid.length - 1;
-        html += '<li class="ranks-path-step' + (isTarget ? ' is-target' : '')
-          + (lastInGroup ? ' is-last' : '') + '" style="--d:' + delay + 'ms">'
-          + '<span class="ranks-path-dot"></span>'
-          + '<div class="ranks-path-body">'
-          + '<div class="ranks-path-line">'
-          + '<span class="ranks-path-rank">' + ranksEscape(s.rankName) + '</span>'
-          + '<span class="ranks-path-cost">' + ranksFmtMoney(s.cost) + '</span>'
-          + '</div>'
-          + (s.reward
-            ? '<div class="ranks-path-perk">' + ranksEscape(s.reward) + '</div>'
-            : '')
-          + '</div>'
-          + '</li>';
-      });
-      html += '</ol>';
-    }
-    html += '</div>';
-  });
-  html += '</div>';
-  mount.innerHTML = html;
-}
-
-function ranksInvalid(message) {
-  const msg = document.getElementById('ranks-msg');
-  if (msg) { msg.textContent = message; msg.hidden = false; }
-  ['ranks-kpi-needed', 'ranks-kpi-remaining', 'ranks-kpi-pct'].forEach(id => {
+function ranksShowResult(ok) {
+  ['ranks-answer', 'ranks-gains-card'].forEach((id) => {
     const el = document.getElementById(id);
-    if (el) { el.textContent = '—'; el.dataset.val = '0'; }
+    if (el) el.hidden = !ok;
   });
-  const fill = document.getElementById('ranks-progress-fill');
-  const bar = document.getElementById('ranks-progress');
-  const pctLabel = document.getElementById('ranks-progress-pct');
-  if (fill) fill.style.transform = 'scaleX(0)';
-  if (bar) bar.setAttribute('aria-valuenow', '0');
-  if (pctLabel) pctLabel.textContent = '—';
 }
 
-function recompute(animate, renderPath) {
+// Money needed, the balance line and the prestige-unlock heads-up.
+function renderRanksAnswer(steps, animate) {
+  const R = window.RANKS;
+  const need = steps.reduce((sum, s) => sum + s.cost, 0);
+  const goal = steps[steps.length - 1];
+  const rankups = steps.filter((s) => !s.isPrestigeUp).length;
+  const prestiges = steps.length - rankups;
+
+  countUp(document.getElementById('ranks-cost'), need, ranksFmtMoney, animate);
+  document.getElementById('ranks-cost-sub').textContent = 'to get to ' + goal.tierLabel + ' ' + goal.rankName
+    + ' · ' + ranksPlural(rankups, 'rankup') + (prestiges ? ' and ' + ranksPlural(prestiges, 'prestige') : '');
+
+  const balance = R.parseMoney(document.getElementById('ranks-balance').value);
+  const prog = R.progressToTarget(need, balance);
+  const done = balance >= need;
+  document.getElementById('ranks-left').hidden = !balance;
+  document.getElementById('ranks-progress-fill').style.transform = 'scaleX(' + (prog.pct / 100) + ')';
+  document.getElementById('ranks-progress').setAttribute('aria-valuenow', String(Math.round(prog.pct)));
+  document.getElementById('ranks-have').textContent = done
+    ? 'You can afford it now'
+    : 'You have ' + ranksFmtShort(balance) + ' · ' + Math.floor(prog.pct) + '% there';
+  document.getElementById('ranks-to-go').textContent = done ? '' : ranksFmtMoney(prog.remaining) + ' to go';
+
+  const gated = steps.filter((s) => s.needsUnlock).length;
+  const headsUp = document.getElementById('ranks-heads-up');
+  headsUp.hidden = !gated;
+  headsUp.textContent = gated
+    ? 'Heads up: ' + (gated === 1 ? 'that prestige needs' : 'those prestiges each need')
+      + ' an unlock first (' + R.getTrack(ranksTrack).unlockHint + ').'
+    : '';
+}
+
+// What you get: stat totals, one-time unlocks, kits, the rest, and every step.
+function renderRanksGains(steps) {
+  const R = window.RANKS;
+  const g = R.summarizeGains(steps);
+
+  document.getElementById('ranks-gains').innerHTML = g.stats.map((s) =>
+    '<div class="ranks-gain"><b>' + ranksEscape(s.value) + '</b><span>' + ranksEscape(s.label) + '</span></div>').join('');
+  document.getElementById('ranks-unlocks').innerHTML = g.unlocks.map((u) =>
+    '<span class="ranks-unlock">New: ' + ranksEscape(u) + '</span>').join('');
+
+  const kitsEl = document.getElementById('ranks-kits');
+  kitsEl.hidden = !g.kits.length;
+  kitsEl.innerHTML = '<b>New kits:</b> ' + g.kits.map(ranksEscape).join(', ');
+  const alsoEl = document.getElementById('ranks-also');
+  alsoEl.hidden = !g.other.length;
+  alsoEl.innerHTML = '<b>Also:</b> ' + g.other.map(ranksEscape).join(', ');
+
+  document.getElementById('ranks-steps-summary').textContent = 'Every rankup (' + steps.length + ')';
+  let html = '';
+  let lastTier = -1;
+  steps.forEach((s) => {
+    if (s.tier !== lastTier) {
+      html += '<li class="ranks-step-tier">' + ranksEscape(s.tierLabel) + '</li>';
+      lastTier = s.tier;
+    }
+    const perks = s.perks.concat(s.kits.map((k) => 'Kit: ' + k));
+    html += '<li class="ranks-step' + (s.isGoal ? ' is-goal' : '') + (s.isPrestigeUp ? ' is-up' : '') + '">'
+      + '<span class="ranks-step-rank">' + (s.isPrestigeUp ? 'Prestige up → ' : '') + ranksEscape(s.rankName) + '</span>'
+      + '<span class="ranks-step-cost">' + (s.isPrestigeUp ? 'free' : ranksFmtMoney(s.cost)) + '</span>'
+      + (perks.length ? '<span class="ranks-step-perks">' + perks.map(ranksEscape).join(' · ') + '</span>' : '')
+      + '</li>';
+  });
+  document.getElementById('ranks-steps').innerHTML = html;
+}
+
+function recompute(animate, renderGains) {
   const R = window.RANKS;
   if (!R || !ranksCombos) return;
-  const curP = ranksCombos.curP.getValue();
-  const curR = ranksCombos.curR.getValue();
-  const tgtP = ranksCombos.tgtP.getValue();
-  const tgtR = ranksCombos.tgtR.getValue();
-
-  // The path only changes when the position changes — skip it on balance keystrokes.
-  if (renderPath) renderRanksPath(curP, curR, tgtP, tgtR);
-
-  if (curP === '' || curR === '' || tgtP === '' || tgtR === '') {
-    ranksInvalid('Pick your current and target rank to see the cost.');
-    return;
-  }
-
-  const res = R.moneyNeeded(curP, curR, tgtP, tgtR);
-  if (!res.ok) { ranksInvalid(res.error); return; }
-
   const msg = document.getElementById('ranks-msg');
-  if (msg) { msg.hidden = true; msg.textContent = ''; }
+  const path = R.rankupPath(ranksTrack,
+    ranksCombos.curP.getValue(), ranksCombos.curR.getValue(),
+    ranksCombos.tgtP.getValue(), ranksCombos.tgtR.getValue());
 
-  const balanceEl = document.getElementById('ranks-balance');
-  const balance = balanceEl ? Number(balanceEl.value) : 0;
-  const prog = R.progressToTarget(res.needed, balance);
+  msg.hidden = path.ok;
+  msg.textContent = path.ok ? '' : path.error;
+  ranksShowResult(path.ok);
+  if (!path.ok) return;
 
-  countUp(document.getElementById('ranks-kpi-needed'), res.needed, ranksFmtMoney, animate);
-  countUp(document.getElementById('ranks-kpi-remaining'), prog.remaining, ranksFmtMoney, animate);
-  countUp(document.getElementById('ranks-kpi-pct'), prog.pct, ranksFmtPct, animate);
-
-  const fill = document.getElementById('ranks-progress-fill');
-  const bar = document.getElementById('ranks-progress');
-  const pctLabel = document.getElementById('ranks-progress-pct');
-  if (fill) fill.style.transform = 'scaleX(' + (prog.pct / 100) + ')';
-  if (bar) bar.setAttribute('aria-valuenow', String(Math.round(prog.pct)));
-  if (pctLabel) pctLabel.textContent = ranksFmtPct(prog.pct);
+  renderRanksAnswer(path.steps, animate);
+  // The gains only change when the position changes — skip them on balance keystrokes.
+  if (renderGains) renderRanksGains(path.steps);
 }
 
-function buildRankCombo(mountId, items, placeholder) {
-  return createCompoundCombobox({
+function buildRankCombo(mountId, label) {
+  const combo = createCompoundCombobox({
     mount: document.getElementById(mountId),
     grouped: false,
     searchable: false, // short fixed lists; on phones pick, don't type
-    placeholder,
-    items,
-    onSelect: () => recompute(true, true), // selection is occasional — animate + redraw path
+    placeholder: label + '…',
+    items: [],
+    onSelect: () => recompute(true, true), // selection is occasional — animate + redraw
   });
+  document.querySelector('#' + mountId + ' .cbx-input')?.setAttribute('aria-label', label);
+  return combo;
+}
+
+// Fill the pickers for a path and reset to its default goal.
+function setRanksTrack(track) {
+  const R = window.RANKS;
+  ranksTrack = track;
+  document.querySelectorAll('.ranks-track-toggle button').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.track === track));
+  });
+  const tiers = Array.from({ length: R.tierCount(track) }, (_, t) => ({ id: String(t), name: R.tierLabel(track, t) }));
+  const ranks = R.getTrack(track).ranks.map((name, i) => ({ id: String(i), name }));
+  ranksCombos.curP.setItems(tiers);
+  ranksCombos.tgtP.setItems(tiers);
+  ranksCombos.curR.setItems(ranks);
+  ranksCombos.tgtR.setItems(ranks);
+  ranksCombos.curP.setValue(RANKS_DEFAULTS.cur[0]);
+  ranksCombos.curR.setValue(RANKS_DEFAULTS.cur[1]);
+  ranksCombos.tgtP.setValue(RANKS_DEFAULTS.tgt[0]);
+  ranksCombos.tgtR.setValue(RANKS_DEFAULTS.tgt[1]);
+  recompute(true, true);
 }
 
 function initRanks() {
@@ -3379,28 +3373,22 @@ function initRanks() {
   const mount = document.getElementById('ranks-cur-prestige');
   if (!R || !mount || ranksInitialized) return;
 
-  const prestigeItems = R.PRESTIGE_ORDER.map(k => ({ id: k, name: R.prestigeLabel(k) }));
-  const rankItems = R.RANK_ORDER.map((name, i) => ({ id: String(i), name }));
-
   ranksCombos = {
-    curP: buildRankCombo('ranks-cur-prestige', prestigeItems, 'Current prestige…'),
-    curR: buildRankCombo('ranks-cur-rank', rankItems, 'Current rank…'),
-    tgtP: buildRankCombo('ranks-tgt-prestige', prestigeItems, 'Target prestige…'),
-    tgtR: buildRankCombo('ranks-tgt-rank', rankItems, 'Target rank…'),
+    curP: buildRankCombo('ranks-cur-prestige', 'Current prestige'),
+    curR: buildRankCombo('ranks-cur-rank', 'Current rank'),
+    tgtP: buildRankCombo('ranks-tgt-prestige', 'Goal prestige'),
+    tgtR: buildRankCombo('ranks-tgt-rank', 'Goal rank'),
   };
 
-  // Defaults: current = Prestige 0 / Junky, target = Prestige 0 / Director.
-  ranksCombos.curP.setValue('0');
-  ranksCombos.curR.setValue('0');
-  ranksCombos.tgtP.setValue('0');
-  ranksCombos.tgtR.setValue('12');
+  document.querySelectorAll('.ranks-track-toggle button').forEach((b) => {
+    b.addEventListener('click', () => { if (b.dataset.track !== ranksTrack) setRanksTrack(b.dataset.track); });
+  });
 
   // Balance is a high-frequency keyboard path — update without count-up animation.
-  const balanceEl = document.getElementById('ranks-balance');
-  if (balanceEl) balanceEl.addEventListener('input', () => recompute(false, false));
+  document.getElementById('ranks-balance')?.addEventListener('input', () => recompute(false, false));
 
   ranksInitialized = true;
-  recompute(true, true); // initial entrance count-up + path render
+  setRanksTrack('chem');
 }
 
 // ── Status page ───────────────────────────────────────────────────────────────
