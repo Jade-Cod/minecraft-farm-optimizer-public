@@ -123,11 +123,13 @@ function maybeShowFirstVisitPulse() {
 
 function getPage() {
   const hash = location.hash.replace('#', '') || 'home';
-  return ['home', 'prices', 'calculator', 'ranks', 'graphs', 'prestige', 'progress', 'sushi', 'vote', 'lab', 'status'].includes(hash) ? hash : 'home';
+  return ['home', 'prices', 'calculator', 'ranks', 'graphs', 'prestige', 'progress', 'sushi', 'vote', 'lab', 'status',
+    'kits', 'crates', 'tags'].includes(hash) ? hash : 'home';
 }
 
 const GATED_PAGES = new Set(['vote', 'prestige']);
 const CALC_PAGES = new Set(['calculator', 'sushi', 'lab', 'ranks']);
+const CODEX_PAGES = new Set(['kits', 'crates', 'tags']);
 
 function navigate() {
   const page = getPage();
@@ -139,8 +141,8 @@ function navigate() {
   document.querySelectorAll('.nav-tab').forEach(t => {
     t.classList.toggle('active', t.getAttribute('href') === '#' + page);
   });
-  const calcTrigger = document.getElementById('nav-calc-trigger');
-  if (calcTrigger) calcTrigger.classList.toggle('active', CALC_PAGES.has(page));
+  document.getElementById('nav-calc-trigger')?.classList.toggle('active', CALC_PAGES.has(page));
+  document.getElementById('nav-codex-trigger')?.classList.toggle('active', CODEX_PAGES.has(page));
   document.querySelectorAll('.nav-dropdown-item').forEach(a => {
     a.classList.toggle('is-active', a.getAttribute('href') === '#' + page);
   });
@@ -194,43 +196,51 @@ function navigate() {
     renderStatus();
     positionTabPill('#status-range-tabs');
   }
+  if (CODEX_PAGES.has(page)) {
+    window.codexShow(page);
+  }
 }
 
 window.addEventListener('hashchange', navigate);
 
-// ── Nav "Calculators" dropdown ────────────────────────────────────────────
+// ── Nav dropdowns (Calculators, Codex) ─────────────────────────────────────
 
-let navDropdownOpen = false;
+// The id of the open menu, or '' when none is. Each trigger names its menu in
+// aria-controls.
+let navDropdownOpen = '';
 
-// The menu is position:fixed and sits outside .nav-tabs (see index.html) so the
-// scroll box can't clip it; anchor it under the trigger and keep it on-screen.
-function positionNavDropdown() {
-  const menu = document.getElementById('nav-calc-menu');
-  const trig = document.getElementById('nav-calc-trigger');
-  if (!menu || !trig) return;
+// Menus are position:fixed and sit outside .nav-tabs (see index.html) so the
+// scroll box can't clip them; anchor one under its trigger and keep it on-screen.
+function positionNavDropdown(menu, trig) {
   const r = trig.getBoundingClientRect();
   const w = menu.offsetWidth || 190;
   menu.style.top = `${r.bottom + 6}px`;
   menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`;
 }
 
+function setNavDropdown(menuId, open) {
+  const menu = document.getElementById(menuId);
+  const trig = document.querySelector(`[aria-controls="${menuId}"]`);
+  if (menu) menu.dataset.open = String(open);
+  if (trig) trig.setAttribute('aria-expanded', String(open));
+  if (open && menu && trig) positionNavDropdown(menu, trig);
+}
+
 function toggleNavDropdown(e) {
   e.stopPropagation();
-  navDropdownOpen = !navDropdownOpen;
-  const menu = document.getElementById('nav-calc-menu');
-  const trig = document.getElementById('nav-calc-trigger');
-  if (menu) menu.dataset.open = String(navDropdownOpen);
-  if (trig) trig.setAttribute('aria-expanded', String(navDropdownOpen));
-  if (navDropdownOpen) positionNavDropdown();
+  const menuId = e.currentTarget.getAttribute('aria-controls');
+  const opening = navDropdownOpen !== menuId;
+  closeNavDropdown();
+  if (opening) {
+    navDropdownOpen = menuId;
+    setNavDropdown(menuId, true);
+  }
 }
 
 function closeNavDropdown() {
   if (!navDropdownOpen) return;
-  navDropdownOpen = false;
-  const menu = document.getElementById('nav-calc-menu');
-  const trig = document.getElementById('nav-calc-trigger');
-  if (menu) menu.dataset.open = 'false';
-  if (trig) trig.setAttribute('aria-expanded', 'false');
+  setNavDropdown(navDropdownOpen, false);
+  navDropdownOpen = '';
 }
 
 document.addEventListener('click', (e) => {
