@@ -146,6 +146,17 @@ function navigate() {
   });
   const el = document.getElementById('page-' + page);
   if (el) el.classList.add('active');
+  // A new page starts at the top, not wherever the last one was scrolled to.
+  // Jump, don't glide: iOS Safari still smooth-scrolls (html has
+  // scroll-behavior: smooth) even with behavior: 'instant', and a tap during
+  // that glide stops it partway down.
+  const root = document.documentElement;
+  root.style.scrollBehavior = 'auto';
+  window.scrollTo(0, 0);
+  root.style.scrollBehavior = '';
+  // On phones the nav strip scrolls sideways; keep the current tab visible.
+  document.querySelector('.nav-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  closeNavDropdown();
 
   // Gate vote/prestige: activate the page so the panel has a container, then show it.
   if (GATED_PAGES.has(page) && (!window.authUser || window.authUser.guest)) {
@@ -191,8 +202,8 @@ window.addEventListener('hashchange', navigate);
 
 let navDropdownOpen = false;
 
-// The menu is position:fixed (so it isn't clipped by .nav-tabs' scroll box), so
-// anchor it under the trigger and keep it on-screen.
+// The menu is position:fixed and sits outside .nav-tabs (see index.html) so the
+// scroll box can't clip it; anchor it under the trigger and keep it on-screen.
 function positionNavDropdown() {
   const menu = document.getElementById('nav-calc-menu');
   const trig = document.getElementById('nav-calc-trigger');
@@ -228,6 +239,9 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && navDropdownOpen) closeNavDropdown();
 });
+// The menu is anchored to the trigger once, on open; if the nav strip scrolls
+// sideways under it the menu would float detached, so just close it.
+document.querySelector('.nav-tabs')?.addEventListener('scroll', closeNavDropdown, { passive: true });
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
@@ -296,17 +310,23 @@ function _statIcon(c) {
     : `<span class="compound-emoji">${c.emoji}</span>`;
 }
 
+// Icon + name for a home stat card; the name is its own span so it can
+// ellipsize instead of spilling past the card on narrow screens.
+function _statName(c) {
+  return `${_statIcon(c)}<span class="stat-name">${c.name}</span>`;
+}
+
 async function loadTopStats() {
   try {
     const res = await apiFetch(`${API}/api/crops/top`);
     const data = await res.json();
 
-    document.getElementById('stat-best-name').innerHTML  = _statIcon(data.best_price) + ' ' + data.best_price.name;
+    document.getElementById('stat-best-name').innerHTML  = _statName(data.best_price);
     document.getElementById('stat-best-price').textContent = '$' + data.best_price.current_price.toFixed(2) + ' per unit';
 
     if (data.best_craft_profit) {
       const p = data.best_craft_profit;
-      document.getElementById('stat-profit-name').innerHTML  = _statIcon(p) + ' ' + p.name;
+      document.getElementById('stat-profit-name').innerHTML  = _statName(p);
       const profitEl = document.getElementById('stat-profit-val');
       profitEl.textContent = '+$' + p.craft_profit.toFixed(2) + ' per craft (' + p.output_qty + 'x out)';
       profitEl.classList.add(p.craft_profit >= 0 ? 'change-pos' : 'change-neg');
@@ -314,7 +334,7 @@ async function loadTopStats() {
 
     if (data.trending_up[0]) {
       const t = data.trending_up[0];
-      document.getElementById('stat-up').innerHTML  = _statIcon(t) + ' ' + t.name;
+      document.getElementById('stat-up').innerHTML  = _statName(t);
       const upEl = document.getElementById('stat-up-pct');
       upEl.textContent = '▲ +' + t.change_pct + '% this week';
       upEl.classList.add('change-pos');
@@ -322,7 +342,7 @@ async function loadTopStats() {
 
     if (data.trending_down[0]) {
       const t = data.trending_down[0];
-      document.getElementById('stat-down').innerHTML  = _statIcon(t) + ' ' + t.name;
+      document.getElementById('stat-down').innerHTML  = _statName(t);
       const downEl = document.getElementById('stat-down-pct');
       downEl.textContent = '▼ ' + t.change_pct + '% this week';
       downEl.classList.add('change-neg');
@@ -1150,12 +1170,17 @@ async function initGraphs() {
     if (topCrop) graphCombo.setValue(topCrop.id);
   }
 
-  // Fetch history
+  // Fetch history. The chart area shimmers meanwhile (reusing the skeleton
+  // loader) so the empty box doesn't read as broken on a slow connection.
+  const chartWrap = document.querySelector('.main-chart-wrap');
+  chartWrap?.classList.add('skel-block');
   try {
     const res = await apiFetch(`${API}/api/history`);
     graphHistory = await res.json();
   } catch (e) {
     graphHistory = {};
+  } finally {
+    chartWrap?.classList.remove('skel-block');
   }
 
   renderGraphKPIs();
@@ -3342,6 +3367,7 @@ function buildRankCombo(mountId, items, placeholder) {
   return createCompoundCombobox({
     mount: document.getElementById(mountId),
     grouped: false,
+    searchable: false, // short fixed lists; on phones pick, don't type
     placeholder,
     items,
     onSelect: () => recompute(true, true), // selection is occasional — animate + redraw path

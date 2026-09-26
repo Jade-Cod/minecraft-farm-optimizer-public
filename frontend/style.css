@@ -48,6 +48,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Touch devices ── */
+/* No double-tap-to-zoom on controls: rapid taps (e.g. a stepper's +) each count. */
+a, button, input, select, textarea, label, [role="button"], [role="option"] {
+  touch-action: manipulation;
+}
+@media (pointer: coarse) {
+  /* iOS zooms the page into any field under 16px and leaves it zoomed. The
+     per-page field rules set 13–15px with higher specificity, hence !important. */
+  input, select, textarea { font-size: 16px !important; }
+  /* Segmented controls and small links are ~28px tall on desktop; lift them
+     to a comfortable finger size. */
+  .tab, .ui-select, .dash-tier-btn, .sushi-rice-btn, .sushi-nori-btn,
+  .lab-mode-btn, .lab-unit-toggle button, .unlock-guest-link {
+    min-height: 40px;
+  }
+}
+
 /* ── Header ── */
 header {
   background: rgba(24,23,26,0.65);
@@ -98,6 +115,17 @@ header {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+@media (max-width: 700px) {
+  /* Compact phone header: logo + actions share the first row, the nav strip
+     takes the full second row. Roughly half the height of the stacked layout. */
+  .header-inner { padding: 8px 16px; gap: 6px 10px; }
+  .logo { font-size: 16px; gap: 6px; }
+  .logo-img { width: 24px; height: 24px; }
+  .header-actions { order: 1; gap: 8px; }
+  .nav-tabs { order: 2; flex-basis: 100%; }
+  .auth-btn-long, #sync-label, .sync-status, .user-name { display: none; }
+  #sync-btn { padding: 7px 11px; }
+}
 
 /* ── Nav tabs ── */
 .nav-tabs {
@@ -121,7 +149,9 @@ header {
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s var(--ease-out);
   white-space: nowrap;
 }
-.nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+@media (hover: hover) and (pointer: fine) {
+  .nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+}
 .nav-tab:active { transform: translateY(1px); }
 .nav-tab:focus-visible { outline: none; box-shadow: var(--focus-ring); color: var(--text); }
 .nav-tab.active {
@@ -184,7 +214,9 @@ header {
   text-decoration: none;
   transition: background 0.12s ease;
 }
-.nav-dropdown-item:hover { background: rgba(255,255,255,0.09); }
+@media (hover: hover) and (pointer: fine) {
+  .nav-dropdown-item:hover { background: rgba(255,255,255,0.09); }
+}
 .nav-dropdown-item.is-active { color: var(--blue); background: rgba(84,172,210,0.12); }
 @media (max-width: 700px) {
   /* left is set from the trigger in JS (and clamped on-screen); just narrow it. */
@@ -237,7 +269,9 @@ main {
   font-weight: 500;
   transition: opacity 0.15s, transform 0.14s var(--ease-out), box-shadow 0.15s;
 }
-.btn:hover { opacity: 0.85; }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { opacity: 0.85; }
+}
 .btn:active { transform: scale(0.97); }
 .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .btn-primary {
@@ -255,7 +289,9 @@ main {
   backdrop-filter: blur(10px);
   box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset;
 }
-.btn-secondary:hover { background: rgba(255,255,255,0.12); opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover { background: rgba(255,255,255,0.12); opacity: 1; }
+}
 
 /* Sync button: spin the icon while a price refresh is in flight. Linear +
    fast (0.7s) so loading reads as quick (perceived-performance). */
@@ -295,6 +331,13 @@ main {
    the four cards' icons line up on a consistent baseline. */
 .stats-row .stat-value { display: flex; align-items: center; gap: 6px; }
 .stats-row .stat-value .table-icon { margin-right: 0; flex-shrink: 0; }
+.stat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) {
+  /* Two cards per row leaves ~140px for icon + name; 18px mono only fits
+     ~9 characters, and names like Whearootinide are 13. */
+  .stats-row .stat-value { font-size: 14px; letter-spacing: -0.3px; }
+  .stat-card { padding: 14px 12px; }
+}
 
 /* ── Card ── */
 .card {
@@ -369,7 +412,9 @@ main {
   white-space: nowrap;
   transition: color 0.28s var(--ease-out), transform 0.12s var(--ease-out);
 }
-.tab:hover:not(.active) { color: rgba(255,255,255,0.75); }
+@media (hover: hover) and (pointer: fine) {
+  .tab:hover:not(.active) { color: rgba(255,255,255,0.75); }
+}
 .tab:active { transform: scale(0.97); }
 .tab:focus-visible { outline: none; box-shadow: var(--focus-ring); color: var(--text); border-radius: 6px; }
 .tab.active { color: #fff; }
@@ -418,7 +463,9 @@ tbody tr {
   transition: background 0.1s;
 }
 tbody tr:last-child { border-bottom: none; }
-tbody tr:hover { background: rgba(255,255,255,0.04); }
+@media (hover: hover) and (pointer: fine) {
+  tbody tr:hover { background: rgba(255,255,255,0.04); }
+}
 tbody td {
   padding: 10px 14px;
   white-space: nowrap;
@@ -457,6 +504,17 @@ tbody td {
 .mc-name { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 1px; }
 
 .loading { text-align: center; padding: 40px; color: var(--muted); }
+@media (max-width: 700px) {
+  /* Prices table on phones: Compound · Price · %. Rank, recipe, output qty,
+     $ change and craft profit are dropped so the price sits next to the name
+     instead of behind a sideways scroll. colspan rows (loading / no results)
+     are left alone. */
+  #price-table :is(th, td):is(:nth-child(1), :nth-child(3), :nth-child(4), :nth-child(6), :nth-child(8)):not([colspan]) {
+    display: none;
+  }
+  #page-prices .footnote { display: none; } /* explains the hidden Craft +/- column */
+  #price-table :is(th, td) { padding-left: 10px; padding-right: 10px; }
+}
 
 /* ── Skeleton loaders ── shimmer placeholders that match the shape of the
    content they stand in for, so the loading moment reads as intentional. */
@@ -486,6 +544,10 @@ tbody td {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+@media (max-width: 700px) {
+  /* Top 5 Craft Profits: drop Recipe so Profit is visible without scrolling. */
+  #home-top-craft-table :is(th, td):nth-child(3):not([colspan]) { display: none; }
 }
 
 /* ── Planner (home page) ── */
@@ -618,7 +680,9 @@ canvas { display: block; }
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s var(--ease-out);
   backdrop-filter: blur(10px);
 }
-.toggle-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .toggle-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+}
 .toggle-btn.active {
   background: linear-gradient(145deg, rgba(84,172,210,0.5), rgba(41,105,176,0.4));
   color: #fff;
@@ -751,9 +815,10 @@ canvas { display: block; }
   position: absolute; left: 0; right: 0; top: calc(100% + 6px);
   z-index: 60; margin: 0; padding: 5px; list-style: none;
   max-height: 320px; overflow-y: auto;
-  background: rgba(28,27,30,0.86);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* Solid, not glass: the list sits inside cards that are themselves blurred,
+     and iOS doesn't blur a nested backdrop-filter, so any transparency let the
+     fields behind show through the options. */
+  background: #1c1b1e;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   box-shadow: var(--glass-shadow);
@@ -860,7 +925,9 @@ canvas { display: block; }
   text-align: left;
   transition: background 0.15s;
 }
-.mover-item:hover { background: rgba(255,255,255,0.06); }
+@media (hover: hover) and (pointer: fine) {
+  .mover-item:hover { background: rgba(255,255,255,0.06); }
+}
 .mover-name {
   display: flex;
   align-items: center;
@@ -906,10 +973,12 @@ canvas { display: block; }
   box-shadow: var(--glass-shadow);
   will-change: transform;
 }
-.sparkline-card:hover {
-  border-color: rgba(84,172,210,0.4);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 8px 32px rgba(84,172,210,0.12), 0 2px 8px rgba(0,0,0,0.3);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .sparkline-card:hover {
+    border-color: rgba(84,172,210,0.4);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 8px 32px rgba(84,172,210,0.12), 0 2px 8px rgba(0,0,0,0.3);
+    transform: translateY(-1px);
+  }
 }
 .sparkline-name {
   font-size: 12px;
@@ -983,9 +1052,11 @@ canvas { display: block; }
   transition: box-shadow 0.2s, transform 0.2s;
   will-change: transform;
 }
-.prestige-card:hover {
-  box-shadow: 0 1px 0 rgba(255,255,255,0.13) inset, 0 12px 40px rgba(0,0,0,0.45);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .prestige-card:hover {
+    box-shadow: 0 1px 0 rgba(255,255,255,0.13) inset, 0 12px 40px rgba(0,0,0,0.45);
+    transform: translateY(-1px);
+  }
 }
 .prestige-card.clickable { cursor: pointer; }
 .prestige-card-header {
@@ -1055,7 +1126,9 @@ canvas { display: block; }
   text-underline-offset: 2px;
   white-space: nowrap;
 }
-.prog-help-btn:hover { opacity: 0.85; }
+@media (hover: hover) and (pointer: fine) {
+  .prog-help-btn:hover { opacity: 0.85; }
+}
 
 .prestige-help {
   position: relative;
@@ -1075,7 +1148,9 @@ canvas { display: block; }
   line-height: 1;
   cursor: pointer;
 }
-.prestige-help-close:hover { color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .prestige-help-close:hover { color: var(--text); }
+}
 .prestige-help-lead { font-size: 12px; color: var(--muted); margin-bottom: 8px; padding-right: 16px; }
 .prestige-help-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 1.5; }
 .prestige-help-steps a { color: #54acd2; }
@@ -1138,9 +1213,11 @@ canvas { display: block; }
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.2s;
 }
-.prog-card:hover {
-  box-shadow: 0 1px 0 rgba(255,255,255,0.13) inset, 0 12px 40px rgba(0,0,0,0.45);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .prog-card:hover {
+    box-shadow: 0 1px 0 rgba(255,255,255,0.13) inset, 0 12px 40px rgba(0,0,0,0.45);
+    transform: translateY(-1px);
+  }
 }
 .prog-card-head { display: flex; align-items: center; gap: 10px; }
 .prog-card-icon { width: 28px; height: 28px; image-rendering: pixelated; flex-shrink: 0; }
@@ -1169,7 +1246,9 @@ canvas { display: block; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 10px; border-radius: var(--radius-sm);
 }
-.prog-snap-row:hover { background: rgba(255,255,255,0.05); }
+@media (hover: hover) and (pointer: fine) {
+  .prog-snap-row:hover { background: rgba(255,255,255,0.05); }
+}
 .prog-snap-when { font-size: 13px; font-variant-numeric: tabular-nums; }
 .prog-snap-latest {
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
@@ -1180,7 +1259,9 @@ canvas { display: block; }
   background: transparent; border: none; color: var(--muted);
   cursor: pointer; font-size: 13px; padding: 4px 8px; border-radius: 6px;
 }
-.prog-snap-del:hover { color: var(--red); background: rgba(192,57,43,0.12); }
+@media (hover: hover) and (pointer: fine) {
+  .prog-snap-del:hover { color: var(--red); background: rgba(192,57,43,0.12); }
+}
 
 /* ── Prestige live-data banner ── */
 .prestige-live-banner {
@@ -1214,7 +1295,9 @@ canvas { display: block; }
   font-size: 12px; font-weight: 600; cursor: pointer;
   transition: background 0.15s;
 }
-.plb-toggle:hover { background: rgba(255,255,255,0.16); }
+@media (hover: hover) and (pointer: fine) {
+  .plb-toggle:hover { background: rgba(255,255,255,0.16); }
+}
 
 /* Empty-state CTA — opens the upload drawer */
 .plb-cta {
@@ -1224,7 +1307,9 @@ canvas { display: block; }
   padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
   transition: background 0.15s, transform 0.14s var(--ease-out);
 }
-.plb-cta:hover { background: rgba(41,105,176,1); }
+@media (hover: hover) and (pointer: fine) {
+  .plb-cta:hover { background: rgba(41,105,176,1); }
+}
 .plb-cta:active { transform: scale(0.97); }
 .plb-cta:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
@@ -1321,7 +1406,9 @@ canvas { display: block; }
   font-size: 22px; line-height: 1; cursor: pointer; padding: 0 2px;
   transition: color 0.15s;
 }
-.prestige-drawer-close:hover { color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .prestige-drawer-close:hover { color: var(--text); }
+}
 .prestige-drawer-close:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
 
 body.drawer-open { overflow: hidden; }
@@ -1470,7 +1557,9 @@ body.drawer-open { overflow: hidden; }
 }
 .tracker-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.05); }
 .tracker-table tbody tr:last-child { border-bottom: none; }
-.tracker-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+@media (hover: hover) and (pointer: fine) {
+  .tracker-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+}
 .tracker-table td { padding: 8px 12px; vertical-align: middle; }
 
 .tracker-compound { white-space: nowrap; }
@@ -1491,7 +1580,9 @@ body.drawer-open { overflow: hidden; }
   flex-shrink: 0;
   box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset;
 }
-.tracker-crop-badge:hover { border-color: rgba(84,172,210,0.5); box-shadow: 0 0 0 3px rgba(84,172,210,0.1); }
+@media (hover: hover) and (pointer: fine) {
+  .tracker-crop-badge:hover { border-color: rgba(84,172,210,0.5); box-shadow: 0 0 0 3px rgba(84,172,210,0.1); }
+}
 
 .tracker-crop-icon {
   width: 28px;
@@ -1591,7 +1682,9 @@ body.drawer-open { overflow: hidden; }
   transition: background 0.2s;
 }
 .dash-booster-btn:last-of-type { border-right: none; }
-.dash-booster-btn:hover { background: rgba(255,255,255,0.04); }
+@media (hover: hover) and (pointer: fine) {
+  .dash-booster-btn:hover { background: rgba(255,255,255,0.04); }
+}
 .dash-booster-btn.active { background: rgba(41,105,176,0.15); }
 .dash-booster-btn.active .dash-booster-icon { filter: none; }
 .dash-booster-icon { font-size: 24px; filter: grayscale(1) opacity(0.4); transition: filter 0.2s; }
@@ -1608,8 +1701,10 @@ body.drawer-open { overflow: hidden; }
 
 /* Server booster half: a container for the tier picker, not itself clickable. */
 .dash-booster-tiered { flex-direction: column; align-items: stretch; gap: 12px; cursor: default; }
-.dash-booster-tiered:hover { background: none; }
-.dash-booster-tiered.active:hover { background: rgba(41,105,176,0.15); }
+@media (hover: hover) and (pointer: fine) {
+  .dash-booster-tiered:hover { background: none; }
+  .dash-booster-tiered.active:hover { background: rgba(41,105,176,0.15); }
+}
 .dash-booster-head { display: flex; align-items: center; gap: 14px; }
 
 .dash-tier-row {
@@ -1657,6 +1752,17 @@ body.drawer-open { overflow: hidden; }
 }
 .dash-mult-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
 .dash-mult-val { font-family: var(--font-mono); font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -1px; color: var(--yellow); line-height: 1; }
+@media (max-width: 700px) {
+  /* Stack the booster row: the personal toggle squeezed beside the mult box
+     wrapped its label onto five lines, and its active tint ended in a hard
+     edge against the untinted box. Each part gets its own full-width row. */
+  .dash-booster-btn {
+    flex-basis: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .dash-mult-display { flex-basis: 100%; flex-direction: row; justify-content: space-between; padding: 12px 20px; }
+}
 
 .dash-add-bar { display: flex; gap: 10px; align-items: center; }
 .dash-select {
@@ -1697,7 +1803,9 @@ body.drawer-open { overflow: hidden; }
   font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.dash-remove-btn:hover { background: rgba(184,58,47,0.2); color: var(--red); border-color: rgba(184,58,47,0.4); }
+@media (hover: hover) and (pointer: fine) {
+  .dash-remove-btn:hover { background: rgba(184,58,47,0.2); color: var(--red); border-color: rgba(184,58,47,0.4); }
+}
 
 /* Per-chemical purity (Value/Progress/Score, level 0–3) */
 .dash-purity-wrap {
@@ -1752,7 +1860,9 @@ body.drawer-open { overflow: hidden; }
   line-height: 1; white-space: nowrap;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }
-.ui-select:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
+@media (hover: hover) and (pointer: fine) {
+  .ui-select:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
+}
 .ui-select:active { transform: scale(0.97); }
 .ui-select:focus-visible {
   outline: none; border-color: rgba(84,172,210,0.6);
@@ -1789,7 +1899,10 @@ body.drawer-open { overflow: hidden; }
   color: var(--text); font-family: inherit; font-size: 13px; font-weight: 600;
   text-align: left; border-radius: 6px; transition: background 0.12s ease;
 }
-.ui-menu-item:hover, .ui-menu-item.is-active { background: rgba(255,255,255,0.09); }
+.ui-menu-item.is-active { background: rgba(255,255,255,0.09); }
+@media (hover: hover) and (pointer: fine) {
+  .ui-menu-item:hover { background: rgba(255,255,255,0.09); }
+}
 .ui-menu-item:active { background: rgba(84,172,210,0.2); }
 .ui-menu-item.is-selected { color: var(--blue); }
 .ui-menu-check { width: 12px; height: 12px; flex-shrink: 0; }
@@ -1810,7 +1923,9 @@ body.drawer-open { overflow: hidden; }
   display: flex; align-items: center; justify-content: center; user-select: none;
   transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
 }
-.ui-step:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .ui-step:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+}
 .ui-step:active { background: rgba(84,172,210,0.2); color: var(--blue); transform: scale(0.92); }
 .ui-step-input {
   width: 46px; border: none; background: none; color: var(--text);
@@ -2039,8 +2154,10 @@ body.drawer-open { overflow: hidden; }
 }
 .sushi-rice-btn.active, .sushi-nori-btn.active { color: #fff; }
 .sushi-rice-btn.active em, .sushi-nori-btn.active em { color: rgba(255,255,255,0.7); }
-.sushi-rice-btn:hover:not(.active), .sushi-nori-btn:hover:not(.active) {
-  color: rgba(255,255,255,0.7);
+@media (hover: hover) and (pointer: fine) {
+  .sushi-rice-btn:hover:not(.active), .sushi-nori-btn:hover:not(.active) {
+    color: rgba(255,255,255,0.7);
+  }
 }
 
 .sushi-qty-row { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -2089,13 +2206,15 @@ body.drawer-open { overflow: hidden; }
     0 2px 6px rgba(0,0,0,0.2);
   transition: box-shadow 0.2s, transform 0.2s;
 }
-.sushi-card:hover {
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.15) inset,
-    0 -1px 0 rgba(0,0,0,0.15) inset,
-    0 12px 40px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .sushi-card:hover {
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.15) inset,
+      0 -1px 0 rgba(0,0,0,0.15) inset,
+      0 12px 40px rgba(0,0,0,0.4),
+      0 4px 12px rgba(0,0,0,0.25);
+    transform: translateY(-1px);
+  }
 }
 
 .sushi-card-header {
@@ -2125,9 +2244,17 @@ body.drawer-open { overflow: hidden; }
   background: linear-gradient(90deg, rgba(41,105,176,0.18) 0%, rgba(41,105,176,0.08) 100%);
 }
 .sushi-table tbody tr + tr { border-top: 1px solid rgba(255,255,255,0.04); }
-.sushi-table tbody tr:hover { background: rgba(255,255,255,0.03); }
-.sushi-best-row:hover { background: linear-gradient(90deg, rgba(41,105,176,0.22) 0%, rgba(41,105,176,0.1) 100%); }
+@media (hover: hover) and (pointer: fine) {
+  .sushi-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+  .sushi-best-row:hover { background: linear-gradient(90deg, rgba(41,105,176,0.22) 0%, rgba(41,105,176,0.1) 100%); }
+}
 .sushi-table td { padding: 10px 18px; vertical-align: middle; }
+@media (max-width: 700px) {
+  /* Route · Revenue · Net (· total): ingredient cost is the difference
+     between the two, so it goes first on narrow screens. */
+  .sushi-table :is(th, td):nth-child(3) { display: none; }
+  .sushi-table thead th, .sushi-table td { padding-left: 10px; padding-right: 10px; }
+}
 
 .sushi-route-label { color: rgba(255,255,255,0.4); white-space: nowrap; cursor: default; }
 .sushi-best-row .sushi-route-label { color: var(--text); font-weight: 600; }
@@ -2165,7 +2292,9 @@ body.drawer-open { overflow: hidden; }
   padding: 10px 12px;
   background: rgba(255,255,255,0.02);
 }
-.sushi-mat-stat:hover { background: rgba(255,255,255,0.05); }
+@media (hover: hover) and (pointer: fine) {
+  .sushi-mat-stat:hover { background: rgba(255,255,255,0.05); }
+}
 .sushi-mat-div { width: 1px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
 .sushi-mat-n {
   font-size: 20px; font-weight: 700; color: var(--text);
@@ -2237,7 +2366,9 @@ body.drawer-open { overflow: hidden; }
   white-space: nowrap;
 }
 .lab-mode-btn.active { color: #fff; }
-.lab-mode-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
+@media (hover: hover) and (pointer: fine) {
+  .lab-mode-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
+}
 
 /* Amount block: caption on top, then the field row (select? · number · unit). */
 .lab-inputs { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
@@ -2284,7 +2415,9 @@ body.drawer-open { overflow: hidden; }
   transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out);
 }
 .lab-unit-toggle button.active { background: rgba(255,255,255,0.1); color: #fff; }
-.lab-unit-toggle button:hover:not(.active) { color: rgba(255,255,255,0.75); }
+@media (hover: hover) and (pointer: fine) {
+  .lab-unit-toggle button:hover:not(.active) { color: rgba(255,255,255,0.75); }
+}
 
 /* Result / empty cards capped to a comfortable measure. */
 .lab-result-card, .lab-empty { max-width: 620px; }
@@ -2323,6 +2456,16 @@ body.drawer-open { overflow: hidden; }
 .lab-ing-empty { padding: 14px 0; color: var(--muted); font-size: 13.5px; }
 /* Input mode: an ingredient already fully covered by what you have. */
 .lab-ing-done { font-size: 13px; font-weight: 700; color: var(--green); flex-shrink: 0; }
+@media (max-width: 700px) {
+  /* Mode toggle: fill the card with two equal halves and let the long labels
+     wrap, instead of running past the card and the screen edge. */
+  .lab-mode-toggle { width: 100%; }
+  .lab-mode-btn { white-space: normal; line-height: 1.25; }
+  /* "have … · need …" drops under the name rather than running into the
+     amount / "✓ all used" on the right. */
+  .lab-ing-left { flex-wrap: wrap; row-gap: 2px; }
+  .lab-ing-ratio { white-space: normal; }
+}
 
 /* The answer: how much you end up with. Full-bleed footer. */
 .lab-produce {
@@ -2457,7 +2600,9 @@ body.drawer-open { overflow: hidden; }
   border-radius: 4px; padding: 1px 5px; font-size: 11px; color: var(--blue);
 }
 .ntfy-link { font-size: 12px; color: var(--blue); text-decoration: none; word-break: break-all; }
-.ntfy-link:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) {
+  .ntfy-link:hover { text-decoration: underline; }
+}
 
 /* Vote grid */
 .vote-grid {
@@ -2482,18 +2627,22 @@ body.drawer-open { overflow: hidden; }
   transition: box-shadow 0.2s, transform 0.2s, opacity 0.3s;
   text-align: center;
 }
-.vote-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.14) inset,
-    0 12px 40px rgba(0,0,0,0.45),
-    0 4px 12px rgba(0,0,0,0.25);
+@media (hover: hover) and (pointer: fine) {
+  .vote-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.14) inset,
+      0 12px 40px rgba(0,0,0,0.45),
+      0 4px 12px rgba(0,0,0,0.25);
+  }
 }
 .vote-card.vote-card-voted {
   opacity: 0.65;
 }
-.vote-card.vote-card-voted:hover {
-  opacity: 0.8;
+@media (hover: hover) and (pointer: fine) {
+  .vote-card.vote-card-voted:hover {
+    opacity: 0.8;
+  }
 }
 
 /* Site icon badge — neutral glass disc so transparent favicons read clearly */
@@ -2555,9 +2704,11 @@ body.drawer-open { overflow: hidden; }
   box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 16px rgba(41,105,176,0.25);
   transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
 }
-.vote-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 20px rgba(41,105,176,0.35);
+@media (hover: hover) and (pointer: fine) {
+  .vote-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 20px rgba(41,105,176,0.35);
+  }
 }
 .vote-btn.vote-btn-voted,
 .vote-btn:disabled {
@@ -2571,9 +2722,11 @@ body.drawer-open { overflow: hidden; }
 .vote-btn.vote-btn-voted {
   cursor: pointer;
 }
-.vote-btn.vote-btn-voted:hover {
-  color: rgba(255,255,255,0.55);
-  background: rgba(255,255,255,0.1);
+@media (hover: hover) and (pointer: fine) {
+  .vote-btn.vote-btn-voted:hover {
+    color: rgba(255,255,255,0.55);
+    background: rgba(255,255,255,0.1);
+  }
 }
 
 /* Opt-in vote diagnostics (?votedebug) — raw timestamps for pinning down resets */
@@ -2811,7 +2964,9 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   white-space: nowrap;
   transition: background 0.15s;
 }
-.auth-btn:hover { background: #4752c4; }
+@media (hover: hover) and (pointer: fine) {
+  .auth-btn:hover { background: #4752c4; }
+}
 .auth-btn.hidden { display: none; }
 
 .user-menu {
@@ -2845,7 +3000,9 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.logout-btn:hover { border-color: var(--text); color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .logout-btn:hover { border-color: var(--text); color: var(--text); }
+}
 
 /* ── Unlock panel — replaces gated page content for guests ── */
 /* Real page content hidden (not destroyed) while the unlock gate is shown. */
@@ -2924,7 +3081,9 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   justify-content: center;
   margin-bottom: 14px;
 }
-.unlock-discord-btn:hover { background: #4752c4; transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) {
+  .unlock-discord-btn:hover { background: #4752c4; transform: translateY(-1px); }
+}
 .unlock-discord-btn:active { transform: translateY(0); }
 .unlock-guest-link {
   background: none;
@@ -2935,7 +3094,9 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   padding: 0;
   transition: color 0.15s;
 }
-.unlock-guest-link:hover { color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .unlock-guest-link:hover { color: var(--text); }
+}
 
 
 /* ── Status page ── */
@@ -3027,7 +3188,7 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   gap: 20px;
   align-items: start;
 }
-.status-heat-body { padding: 16px 18px 14px; overflow-x: auto; }
+.status-heat-body { padding: 16px 18px 0; overflow-x: auto; }
 .status-heat-scroll { min-width: 560px; }
 .status-heat-grid {
   display: grid;
@@ -3043,7 +3204,19 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   padding-right: 4px;
 }
 .status-heat-cell { aspect-ratio: 1; border-radius: 3px; }
-.status-heat-cell:hover { outline: 1px solid rgba(255,255,255,0.4); }
+@media (max-width: 700px) {
+  /* The grid scrolls sideways on phones; keep Mon–Sun pinned so each row
+     stays readable. Solid backing so cells slide under, not through. */
+  .status-heat-day { position: sticky; left: 0; z-index: 1; background: #25262c; }
+  /* Sticky insets respect the scroll box's padding, so cells would peek
+     through the 18px gap left of the labels. Move that gap into the label
+     column instead so the pinned strip starts at the card edge. */
+  .status-heat-body { padding-left: 0; }
+  .status-heat-grid, .status-heat-hours { grid-template-columns: 52px repeat(24, 1fr); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .status-heat-cell:hover { outline: 1px solid rgba(255,255,255,0.4); }
+}
 .status-heat-ok      { background: var(--green); opacity: 0.8; }
 .status-heat-partial { background: var(--yellow); opacity: 0.85; }
 .status-heat-bad     { background: var(--red); opacity: 0.9; }
@@ -3061,11 +3234,12 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   text-align: center;
   font-family: var(--font-mono);
 }
+/* Outside the scroll box so it stays put when the grid scrolls on phones. */
 .status-heat-legend {
   display: flex;
   gap: 14px;
   align-items: center;
-  margin-top: 12px;
+  padding: 12px 18px 14px;
   font-size: 11px;
   color: var(--muted);
   flex-wrap: wrap;
@@ -3094,7 +3268,9 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
   padding: 10px;
   border-radius: var(--radius-sm);
 }
-.status-feed-item:hover { background: rgba(255,255,255,0.05); }
+@media (hover: hover) and (pointer: fine) {
+  .status-feed-item:hover { background: rgba(255,255,255,0.05); }
+}
 .status-feed-item .status-dot { width: 10px; height: 10px; margin-top: 4px; }
 .status-feed-title { font-size: 13px; font-weight: 600; }
 .status-feed-sub { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 1px; }

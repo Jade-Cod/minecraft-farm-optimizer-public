@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=64" />
+  <link rel="stylesheet" href="/static/style.css?v=75" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -35,11 +35,6 @@
               <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <div class="nav-dropdown-menu" id="nav-calc-menu" data-open="false">
-            <a class="nav-dropdown-item" href="#calculator">💰 Revenue Calculator</a>
-            <a class="nav-dropdown-item" href="#sushi">🍣 Sushi</a>
-            <a class="nav-dropdown-item" href="#lab">🧪 Lab Calculator</a>
-          </div>
         </div>
         <a class="nav-tab" href="#ranks">Ranks</a>
         <a class="nav-tab" href="#graphs">Graphs</a>
@@ -47,15 +42,22 @@
         <a class="nav-tab" data-gated="true" href="#prestige">Prestige</a>
         <a class="nav-tab" data-gated="true" href="#vote">Vote</a>
       </nav>
+      <!-- Outside .nav-tabs on purpose: iOS Safari clips fixed children of a
+           touch-scrolling box to that box, so the menu never showed on phones. -->
+      <div class="nav-dropdown-menu" id="nav-calc-menu" data-open="false">
+        <a class="nav-dropdown-item" href="#calculator">💰 Revenue Calculator</a>
+        <a class="nav-dropdown-item" href="#sushi">🍣 Sushi</a>
+        <a class="nav-dropdown-item" href="#lab">🧪 Lab Calculator</a>
+      </div>
       <div class="header-actions">
         <div id="user-menu" class="user-menu hidden">
           <img class="user-avatar" id="user-avatar" alt="avatar" />
           <span class="user-name" id="user-name"></span>
           <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
-        <button id="auth-btn" class="auth-btn" onclick="window.location.href='/auth/discord/login'">Login with Discord</button>
+        <button id="auth-btn" class="auth-btn" onclick="window.location.href='/auth/discord/login'">Login<span class="auth-btn-long"> with Discord</span></button>
         <span id="sync-status" class="sync-status"></span>
-        <button id="sync-btn" class="btn btn-secondary" onclick="syncPrices()"><span class="sync-icon" id="sync-icon">&#8635;</span><span id="sync-label">Sync Prices</span></button>
+        <button id="sync-btn" class="btn btn-secondary" onclick="syncPrices()" aria-label="Sync prices"><span class="sync-icon" id="sync-icon">&#8635;</span><span id="sync-label">Sync Prices</span></button>
       </div>
     </div>
   </header>
@@ -129,7 +131,7 @@
             <button class="tab" onclick="setPriceTab('combo', this)">Combos</button>
           </div>
           <div class="table-controls">
-            <input type="text" id="search" placeholder="Search compound..." oninput="filterTable()" />
+            <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" id="search" placeholder="Search compound..." oninput="filterTable()" />
             <button type="button" id="sort-select" class="ui-select"
               aria-haspopup="listbox" aria-expanded="false" aria-label="Sort"
               data-value="price" data-onpick="setSortOption"
@@ -404,7 +406,7 @@
         <div class="card-header">
           <h2>&#129518; All Compounds</h2>
           <div class="grid-toolbar">
-            <input type="text" id="spark-search" class="spark-search" placeholder="Search..." oninput="renderSparklines()" />
+            <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" id="spark-search" class="spark-search" placeholder="Search..." oninput="renderSparklines()" />
             <button type="button" id="spark-sort" class="ui-select"
               aria-haspopup="listbox" aria-expanded="false" aria-label="Sort"
               data-value="change" data-onpick="setSparkSort"
@@ -661,13 +663,13 @@
             <div class="status-heat-scroll">
               <div class="status-heat-grid" id="status-heat-grid"></div>
               <div class="status-heat-hours" id="status-heat-hours"></div>
-              <div class="status-heat-legend">
-                <span><i class="status-leg status-leg-ok"></i>Up all hour</span>
-                <span><i class="status-leg status-leg-partial"></i>Partial</span>
-                <span><i class="status-leg status-leg-bad"></i>Down</span>
-                <span><i class="status-leg status-leg-nodata"></i>No data</span>
-              </div>
             </div>
+          </div>
+          <div class="status-heat-legend">
+            <span><i class="status-leg status-leg-ok"></i>Up all hour</span>
+            <span><i class="status-leg status-leg-partial"></i>Partial</span>
+            <span><i class="status-leg status-leg-bad"></i>Down</span>
+            <span><i class="status-leg status-leg-nodata"></i>No data</span>
           </div>
         </section>
 
@@ -696,8 +698,8 @@
   </main>
 
   <script src="/static/ranks.js?v=1"></script>
-  <script src="/static/combobox.js?v=1"></script>
+  <script src="/static/combobox.js?v=2"></script>
   <script src="/static/dropdown.js?v=46"></script>
-  <script src="/static/app.js?v=65"></script>
+  <script src="/static/app.js?v=69"></script>
 </body>
 </html>
