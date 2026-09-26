@@ -3,7 +3,7 @@
 // Wrapped in an IIFE so its names can't collide with app.js; app.js calls
 // window.codexShow(page) from navigate().
 (() => {
-  const CODEX_DATA_VERSION = 1;  // bump with every regenerated codex.json
+  const CODEX_DATA_VERSION = 2;  // bump with every regenerated codex.json
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const iconUrl = (stem) => `/static/icons/${stem}.png`;
@@ -44,7 +44,7 @@
   const tipItems = [];
   function slot(item, extraClass = '') {
     const id = tipItems.push(item) - 1;
-    const enchanted = item.e && item.e.length && item.icon;
+    const enchanted = (item.glint || (item.e && item.e.length)) && item.icon;
     const mask = enchanted ? ` style="--m:url(${iconUrl(item.icon)})"` : '';
     const block = item.icon && item.icon.startsWith('block/') ? ' class="is-block"' : '';  // 3D render, scale smoothly
     const inner = item.icon
@@ -54,9 +54,11 @@
     const label = (item.c > 1 ? item.c + ' ' : '') + item.n;
     return `<button type="button" class="codex-slot${enchanted ? ' is-ench' : ''} ${extraClass}" data-tip="${id}" aria-label="${esc(label)}"${mask}>${inner}${count}</button>`;
   }
+  // Captured items keep their in-game name styling, e.g. "EXP " bold green then "x1,500" white.
+  const nameHTML = (it, color) => (it.runs && it.runs.length ? it.runs.map((r) => mcSpan(r.t, r.c, r.b)).join('') : mcSpan(it.n, color));
   function tipHTML(t) {
     const color = t.rarity ? RARITY[t.rarity] : (t.e && t.e.length ? '#55ffff' : '#ffffff');
-    let h = `<div class="codex-tip-name">${mcSpan(t.n, color)}</div>`;
+    let h = `<div class="codex-tip-name">${nameHTML(t, color)}</div>`;
     (t.e || []).forEach((e) => {
       h += `<div class="codex-tip-line">${esc(e)}</div>`;
       const d = enchDesc(e);
@@ -224,7 +226,8 @@
     const odds = it.odds != null
       ? `<div class="codex-row-odds"><b>${it.odds}%</b><span>1 in ${Math.round(100 / it.odds)} keys</span><div class="codex-bar"><i style="width:${(it.odds / maxOdds) * 100}%"></i></div></div>`
       : '<div></div>';
-    return `<div class="codex-row">${slot(it)}<div><div class="codex-row-name" style="color:${color}">${esc(it.n)}</div>${
+    const name = it.runs ? `<div class="codex-row-name is-mc">${nameHTML(it)}</div>` : `<div class="codex-row-name" style="color:${color}">${esc(it.n)}</div>`;
+    return `<div class="codex-row">${slot(it)}<div>${name}${
       it.d ? `<div class="codex-row-desc">${esc(it.d)}</div>` : ''}${enchChips(it.e)}${itemMeta(it)}</div>${odds}</div>`;
   }
   function crateItemsHTML(c) {
@@ -271,10 +274,11 @@
       return;
     }
     const top = c.items[0].odds != null ? [...c.items].sort((a, b) => a.odds - b.odds)[0] : c.items.find((i) => i.rarity === 'Exceedingly Rare');
-    const topSub = top && (top.odds != null ? `rarest · 1 in ${Math.round(100 / top.odds)} keys`
+    const even = top && top.odds != null && c.items.every((i) => i.odds === top.odds);  // e.g. Prestige: 9 prizes at 11.1%
+    const topSub = top && (top.odds != null ? `${even ? 'every prize' : 'rarest'} · 1 in ${Math.round(100 / top.odds)} keys`
       : top.unboxed ? `the chase item · ${top.unboxed} unboxed so far` : 'the chase item');
-    main.innerHTML = crateHead(c, top ? `<div class="codex-crate-top"><b style="color:${top.rarity ? RARITY[top.rarity] : 'var(--mc-gold)'}">${esc(top.n)}</b><span>${topSub}</span></div>` : '')
-      + `<div class="card codex-crate-body" data-swap="${!!swap}">${crateItemsHTML(c)}${c.items[0].odds == null
+    main.innerHTML = crateHead(c, top ? `<div class="codex-crate-top"><b style="color:${top.rarity ? RARITY[top.rarity] : 'var(--mc-gold)'}">${even ? `${top.odds}% each` : esc(top.n)}</b><span>${topSub}</span></div>` : '')
+      + `<div class="card codex-crate-body" data-swap="${!!swap}">${crateItemsHTML(c)}${c.note ? `<div class="codex-note">${esc(c.note)}</div>` : ''}${c.items[0].odds == null
         ? '<div class="codex-note">You get the highest rarity rolled, and every key you open raises your odds of a Rare or better. Left-click the crate in-game to see your current roll. Scrap unwanted items for new keys with <code>/scrap</code>.</div>' : ''}</div>`;
   }
 
@@ -284,10 +288,20 @@
     if (!t.segs) return `<span class="codex-mc">${mcSpan(t.text)}</span>`;
     return `<span class="codex-mc">${t.segs.map((p) => mcSpan(p.t, p.c, p.b)).join('')}</span>`;
   }
-  const FILTERS = { event: ['event'], pit: ['pit'], crate: ['crate'], shop: ['shop'], earned: ['achievement', 'vote', 'earned'], other: ['other'] };
+  // The side index: one heading per way of earning, one entry per category under it.
+  const TAG_GROUPS = [
+    { v: 'event', label: 'Events', groups: ['event'] },
+    { v: 'pit', label: 'The Pit', groups: ['pit'] },
+    { v: 'crate', label: 'Tag crates', groups: ['crate'] },
+    { v: 'shop', label: 'Tag Shop', groups: ['shop'] },
+    { v: 'earned', label: 'Earned', groups: ['achievement', 'vote', 'earned'] },
+    { v: 'other', label: 'Other', groups: ['other'] },
+  ];
+  const sectionsIn = (g) => data.tagSections.filter((s) => g.groups.includes(s.group));
+  const groupOf = (sid) => TAG_GROUPS.find((g) => g.groups.includes(data.tagSections.find((s) => s.id === sid).group));
   const HOLDERS_SHOWN = 4;
   const expanded = new Set();
-  let tagFilter = 'all';
+  let tagSec = null;  // the category on screen; search looks across all of them
   let tagSel = 0;
   let scrollToTag = false;  // set when a crate sends you here with a tag picked
   const shortDate = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -307,10 +321,45 @@
       <div class="codex-tag-how">${esc(t.how)}</div>
       <div class="codex-tag-who">${holdersHTML(t)}</div>
     </div>`;
-  function renderChat() {
-    const name = $('#codex-chat-name').value.trim() || 'Steve';
-    $('#codex-chat-line').innerHTML = `${mcSpan('[Director]', '#aaaaaa')} ${renderTag(data.tags[tagSel])} ${mcSpan(name + ': gg')}`;
+  // Chat as the server sends it (from a /ranks capture and real chat lines): white brackets
+  // around the rank in its colour, then the tag, the name, a white colon and a grey message.
+  // A prestige adds a gold [I]..[X] in front; Master wraps the rank in gold stars and bolds it.
+  const CHEM_RANKS = {
+    Junky: '#555555', Intern: '#aaaaaa', Trainee: '#ff55ff', Assistant: '#0000aa', Technician: '#5555ff',
+    Analyst: '#55ff55', Engineer: '#00aa00', Bioengineer: '#00aaaa', Chemist: '#55ffff', Biochemist: '#aa00aa',
+    Alchemist: '#ffaa00', Pharmacologist: '#ffff55',
+    Director: ['#008DCC', '#0096D2', '#009FD8', '#00A8DE', '#00B2E4', '#00BBEA', '#00C4F0', '#00CDF6'],
+  };
+  const PRESTIGES = ['None', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'Master'];
+  const GOLD = '#ffaa00';
+  const chat = { rank: 'Director', prestige: 'None' };
+  let nameTouched = false;  // stop filling in the login name once you've typed your own
+  function rankHTML(rank, prestige) {
+    const color = CHEM_RANKS[rank];
+    const bold = prestige === 'Master';
+    const text = bold ? rank + ' ' : rank;
+    const name = Array.isArray(color) ? [...text].map((ch, i) => mcSpan(ch, color[Math.min(i, color.length - 1)], bold)).join('') : mcSpan(text, color, bold);
+    if (bold) return `${mcSpan('[')}${mcSpan('✦ ', GOLD)}${name}${mcSpan('✦', GOLD)}${mcSpan(']')}`;
+    const p = prestige === 'None' ? '' : `${mcSpan('[')}${mcSpan(prestige, GOLD)}${mcSpan(']')} `;
+    return `${p}${mcSpan('[')}${name}${mcSpan(']')}`;
   }
+  const chatHTML = (rank, tag, name, msg) => `${rank} ${tag ? tag + ' ' : ''}${mcSpan(name)}${mcSpan(':')}${mcSpan(' ' + msg, '#aaaaaa')}`;
+  function renderChat() {
+    const input = $('#codex-chat-name');
+    const login = window.authUser && !window.authUser.guest && window.authUser.username;
+    if (!nameTouched && login) input.value = login.slice(0, 16);
+    const name = input.value.trim() || 'Steve';
+    $('#codex-chat-old').innerHTML = chatHTML(rankHTML('Chemist', 'None'), '', 'Alex', 'anyone selling wheatium?');
+    $('#codex-chat-line').innerHTML = chatHTML(rankHTML(chat.rank, chat.prestige), renderTag(data.tags[tagSel]), name, 'gg');
+    [['rank', Object.keys(CHEM_RANKS)], ['prestige', PRESTIGES]].forEach(([key, list]) => {
+      const b = $(`#codex-chat-${key}`);
+      b.dataset.value = chat[key];
+      b.dataset.options = JSON.stringify(list.map((v) => [v, key === 'prestige' && v !== 'None' && v !== 'Master' ? `Prestige ${v}` : v === 'None' ? 'No prestige' : v]));
+      b.querySelector('.ui-select-text').textContent = JSON.parse(b.dataset.options).find(([v]) => v === chat[key])[1];
+    });
+  }
+  window.codexSetChat = (key, v) => { chat[key] = v; renderChat(); };
+  window.codexRefreshChat = () => { if (data && wired) renderChat(); };  // app.js calls this once login is known
   function groupHead(s) {
     const note = s.live
       ? `<span class="codex-status codex-status--live">Live${s.ends ? ' · ends ' + shortDate(s.ends) : ''}</span>`
@@ -318,12 +367,30 @@
     const color = s.color ? ` style="color:${s.color}"` : '';  // tag crates wear their key's colour
     return `<header class="codex-group-head"><h3${color}>${esc(s.name)}</h3>${note}</header>`;
   }
-  function renderTags() {
+  function renderTagNav(q) {
+    const count = {};
+    data.tags.forEach((t) => { count[t.section] = (count[t.section] || 0) + 1; });
+    const active = groupOf(tagSec);
+    $('#codex-tag-nav').innerHTML = TAG_GROUPS.map((g) => {
+      const secs = sectionsIn(g);
+      return secs.length ? `<div class="codex-crate-grp${g === active ? ' is-active' : ''}"><div class="codex-grp-label">${g.label}</div>${
+        secs.map((s) => `<button type="button" class="codex-crate-pick" aria-pressed="${!q && s.id === tagSec}" data-sec="${s.id}">${
+          esc(s.name.replace(/ Tag Crate$/, ''))}<small${s.live ? ' class="is-live" title="Running now"' : ''}>${count[s.id] || 0}</small></button>`).join('')}</div>` : '';
+    }).join('');
+    document.querySelectorAll('#codex-tag-filter [data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === active.v)));
+    // keep the picked category in view: the phone strip scrolls sideways, the rail can scroll too
+    const nav = $('#codex-tag-nav');
+    const b = nav.querySelector('[aria-pressed="true"]');
+    if (!b) return;
+    const r = b.getBoundingClientRect(), n = nav.getBoundingClientRect();
+    if (r.left < n.left || r.right > n.right) nav.scrollLeft += r.left - n.left - (n.width - r.width) / 2;
+    if (r.top < n.top || r.bottom > n.bottom) nav.scrollTop += r.top - n.top - (n.height - r.height) / 2;
+  }
+  function renderTags(swap) {
     const q = $('#codex-tag-q').value.trim().toLowerCase();
-    const groups = FILTERS[tagFilter];
+    renderTagNav(q);
     let html = '';
-    data.tagSections.forEach((s) => {
-      if (groups && !groups.includes(s.group)) return;
+    (q ? data.tagSections : data.tagSections.filter((s) => s.id === tagSec)).forEach((s) => {
       const inSection = s.name.toLowerCase().includes(q);  // "pit" finds every Pit Weekend tag
       const list = data.tags.filter((t) => t.section === s.id
         && (!q || inSection || t.text.toLowerCase().includes(q) || (t.how || '').toLowerCase().includes(q)));
@@ -333,8 +400,18 @@
         : `<div class="codex-tag-grid">${list.map((t) => tagChip(t).replace('title="Try it in chat"', `title="${esc(t.how)}"`)).join('')}</div>`;
       html += `<section class="card codex-group${s.id === 'unsorted' ? ' is-unknown' : ''}">${groupHead(s)}${body}</section>`;
     });
-    $('#codex-tag-out').innerHTML = html || `<div class="card codex-empty">No tag matches “${esc(q)}”.</div>`;
+    const out = $('#codex-tag-out');
+    out.innerHTML = html || `<div class="card codex-empty">No tag matches “${esc(q)}”.</div>`;
+    out.dataset.swap = !!swap;
     renderChat();
+  }
+  function pickSection(id) {
+    tagSec = id;
+    $('#codex-tag-q').value = '';
+    renderTags(true);
+    // a long category may have left you scrolled past the top of the next one
+    const top = $('#page-tags .codex-body').getBoundingClientRect().top - document.querySelector('header').offsetHeight - 12;
+    if (top < 0) window.scrollBy(0, top);
   }
   function selectTag(id) {
     tagSel = id;
@@ -362,16 +439,18 @@
       const t = e.target.closest('[data-tag]');
       if (!t) return;
       tagSel = +t.dataset.tag;
+      tagSec = data.tags[tagSel].section;
+      $('#codex-tag-q').value = '';
       scrollToTag = true;
       location.hash = '#tags';
     });
     $('#codex-tag-q').addEventListener('input', renderTags);
-    $('#codex-chat-name').addEventListener('input', renderChat);
-    segment('#codex-tag-filter', (v) => { tagFilter = v; renderTags(); });
-    // hide filters with nothing under them (e.g. "Other" once every tag has a source)
+    $('#codex-chat-name').addEventListener('input', () => { nameTouched = true; renderChat(); });
+    segment('#codex-tag-filter', (v) => pickSection(sectionsIn(TAG_GROUPS.find((g) => g.v === v))[0].id));
+    $('#codex-tag-nav').addEventListener('click', (e) => { const b = e.target.closest('[data-sec]'); if (b) pickSection(b.dataset.sec); });
+    // hide groups with nothing under them (e.g. "Other" once every tag has a source)
     document.querySelectorAll('#codex-tag-filter [data-v]').forEach((b) => {
-      const groups = FILTERS[b.dataset.v];
-      b.hidden = !!groups && !data.tagSections.some((sec) => groups.includes(sec.group));
+      b.hidden = !sectionsIn(TAG_GROUPS.find((g) => g.v === b.dataset.v)).length;
     });
     $('#codex-tag-out').addEventListener('click', (e) => {
       const more = e.target.closest('[data-more]');
@@ -410,6 +489,7 @@
     if (!wired) wire();
     document.documentElement.style.setProperty('--codex-hdr', document.querySelector('header').offsetHeight + 'px');
     if (page === 'tags' && tagSel >= data.tags.length) tagSel = 0;
+    if (page === 'tags' && !data.tagSections.some((s) => s.id === tagSec)) tagSec = data.tagSections[0].id;
     RENDER[page]();
     if (page === 'tags' && scrollToTag) {
       scrollToTag = false;

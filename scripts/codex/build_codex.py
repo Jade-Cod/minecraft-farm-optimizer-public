@@ -43,6 +43,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 ICONS = os.path.join(ROOT, 'frontend', 'icons')
 OUT = os.path.join(ROOT, 'frontend', 'codex.json')
 FONT_OUT = os.path.join(ROOT, 'frontend', 'fonts', 'minecraft.woff')
+CHAT_PREVIEW_CHARS = '✦'  # codex.js draws Master prestige ranks as [✦ Rank ✦]
 WIKI_API = 'https://labs-mc.com/w/api.php'
 TEXTURES = 'https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.5/assets/minecraft/textures/'
 CHEM = ['Junky', 'Intern', 'Trainee', 'Assistant', 'Technician', 'Analyst', 'Engineer',
@@ -193,6 +194,7 @@ def fetch_icons(stems, tex):
     """Create missing icons: 3D renders for block/*, 16x16 sprites (runtime tints applied) otherwise."""
     from PIL import Image, ImageChops
     tint = {'leather_horse_armor': '#a06540', 'short_grass': '#79c05a'}
+    sprite = {'sunflower': 'block/sunflower_front', 'enchanted_golden_apple': 'item/golden_apple'}  # item models that borrow a texture
     for stem in sorted(stems):
         dest = os.path.join(ICONS, stem + '.png')
         if stem.startswith('block/'):
@@ -200,7 +202,7 @@ def fetch_icons(stems, tex):
             blocks3d.render(stem[6:], lambda name: tex.image('block/' + name)).save(dest)
             print(f'  + icons/{stem}.png  (3D)')
             continue
-        for path in (f'item/{stem}', f'item/{stem}_00', f'block/{stem}'):
+        for path in ([sprite[stem]] if stem in sprite else []) + [f'item/{stem}', f'item/{stem}_00', f'block/{stem}']:
             raw, source = tex.raw(path)
             if raw:
                 break
@@ -326,10 +328,14 @@ def parse_kits(text):
 
 # ── Crates ───────────────────────────────────────────────────────────────────
 
-WIKI_KEYS = {
-    'Voter Crate': 'Vote with /vote or at labs-mc.com/vote',
-    'Deluxe Voter Crate': 'A Voter Crate prize, or combine 3 Voter Keys with /convert',
-    'Prestige Crate': 'One Prestige Key every time you prestige',
+WIKI_KEYS = {  # from each crate's in-game Crate Info
+    'Voter Crate': 'Vote with /vote, or buy keys with Vote Tokens in /vshop',
+    'Deluxe Voter Crate': 'A Voter Crate prize, convert Voter Keys with /convert, or buy keys with Vote Tokens in /vshop',
+    'Prestige Crate': 'Earned by ranking up and prestiging',
+}
+CRATE_NOTES = {  # seen when opening one (the "Choose a reward!" screen)
+    'Voter Crate': 'Each key rolls 3 prizes and you pick the one you want.',
+    'Deluxe Voter Crate': 'Each key rolls 3 prizes and you pick the one you want.',
 }
 CRATE_GROUP = {'Voter Crate': 'Vote', 'Deluxe Voter Crate': 'Vote', 'Prestige Crate': 'Prestige',
                'Tool Crate': 'Store', 'Favourites Crate': 'Store', 'Spawner Crate': 'Store',
@@ -394,9 +400,36 @@ def captured_crate_item(item):
     if charges:
         desc = (desc[:charges.start()] + desc[charges.end():]).strip()
     name = plain(item['name']).strip()
-    return {'n': name, 'd': desc, 'e': ench, 'rarity': rarity, 'odds': None, 'usage': usage,
+    return {'n': name, 'runs': segs(item['name']), 'd': desc, 'e': ench, 'rarity': rarity, 'odds': None, 'usage': usage,
             'unboxed': unboxed, 'charges': int(charges.group(1)) if charges else None,
             'icon': icon_for_id(item['id'], name)}
+
+
+def captured_odds_item(item):
+    """A fixed-odds crate item (Voter, Deluxe Voter, Prestige): stat lines, then '┃ Chance: N%'."""
+    ench, usage, desc, odds = [], '', '', None
+    for raw in item.get('lore', []):
+        line = plain(raw).strip()
+        if m := re.search(r'Chance: ([\d.]+)%', line):
+            odds = float(m.group(1))
+        elif line.startswith('Info:'):
+            usage = line.split(':', 1)[1].strip()
+        elif line.startswith('Duration:'):
+            desc = f"Lasts {line.split(':', 1)[1].strip()}."
+        elif line and not line.startswith('┃'):
+            ench.append(line)  # enchants, or a potion's effect
+    name = plain(item['name']).strip()
+    glint = item['id'].endswith('enchanted_golden_apple')  # shimmers in-game without listing enchants
+    return {'n': name, 'runs': segs(item['name']), 'c': item.get('count', 1), 'd': desc, 'e': ench,
+            'rarity': None, 'odds': odds, 'usage': usage, 'icon': icon_for_id(item['id'], name),
+            **({'glint': True} if glint else {})}
+
+
+def with_wiki_notes(items, wiki_items):
+    """The wiki explains what some prizes do; borrow that where its list lines up with the game's."""
+    if [i['odds'] for i in items] != [w['odds'] for w in wiki_items]:
+        return items
+    return [{**i, 'd': i['d'] or w['d']} for i, w in zip(items, wiki_items)]
 
 
 # ── Tags ─────────────────────────────────────────────────────────────────────
@@ -889,11 +922,14 @@ def build(captures):
             if title in wiki and title not in captured:
                 items = [captured_crate_item(it) for _, it in gui_items(slots)
                          if any('Rarity:' in l for l in lore_lines(it))]
+                items = items or with_wiki_notes([captured_odds_item(it) for _, it in gui_items(slots)
+                                                  if any('Chance:' in l for l in lore_lines(it))], wiki[title])
                 if items:
                     captured[title] = items
     crates = [{'name': name, 'group': CRATE_GROUP.get(name, 'Supply'),
                'source': 'game' if name in captured else 'wiki',
                'keys': WIKI_KEYS.get(name, 'Open with a Crate Key from /buy, /vshop or /bshop'),
+               **({'note': CRATE_NOTES[name]} if name in CRATE_NOTES else {}),
                'items': captured.get(name, items)} for name, items in wiki.items()]
 
     tags = Tags()
@@ -961,7 +997,7 @@ def main():
     print('game install:', 'found' if tex.jar else 'not found, using the vanilla mirror (no font)')
     data, missing = build(os.path.expanduser(args.captures))
     if tex.jar:
-        chars = set(json.dumps(data, ensure_ascii=False))
+        chars = set(json.dumps(data, ensure_ascii=False)) | set(CHAT_PREVIEW_CHARS)
         os.makedirs(os.path.dirname(FONT_OUT), exist_ok=True)
         n, lacking = mcfont.build_font(tex.font_chain(chars), chars, FONT_OUT)
         print(f'wrote {os.path.relpath(FONT_OUT, ROOT)}: {n} glyphs, {os.path.getsize(FONT_OUT) // 1024} KB'

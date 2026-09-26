@@ -31,6 +31,7 @@ MODELS = {
     'smooth_stone_slab': {'top': 'smooth_stone', 'side': 'smooth_stone_slab_side', 'box': (1, 0.5, 1)},
     'stone_button': {'all': 'stone', 'box': (6 / 16, 4 / 16, 4 / 16), 'lift': 6 / 16},  # inventory model: 6x4x4, mid-height
     'beacon': {'all': 'glass', 'inner': 'beacon'},
+    'spawner': {'all': 'spawner'},
 }
 
 

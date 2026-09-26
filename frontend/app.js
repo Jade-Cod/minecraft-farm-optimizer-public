@@ -52,6 +52,7 @@ function renderAuthUI() {
     menu.classList.add('hidden');
     btn.classList.remove('hidden');
   }
+  if (window.codexRefreshChat) window.codexRefreshChat();  // chat preview uses the login name
 }
 
 async function logout() {

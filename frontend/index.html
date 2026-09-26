@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=77" />
+  <link rel="stylesheet" href="/static/style.css?v=78" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -389,28 +389,36 @@
           <h2>Chat Tags</h2>
           <p class="prestige-intro">Every chat tag, how to get it, and who has it. Tap one to try it in chat.</p>
         </div>
+        <label class="codex-search"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <input id="codex-tag-q" type="search" placeholder="Search every tag, e.g. Pit Boss" autocomplete="off" aria-label="Search every tag" />
+        </label>
       </div>
       <div class="codex-body">
-        <div class="codex-controls">
-          <div class="codex-seg" id="codex-tag-filter" role="group" aria-label="How it's earned">
-            <button type="button" aria-pressed="true" data-v="all">All</button>
-            <button type="button" aria-pressed="false" data-v="event">Events</button>
-            <button type="button" aria-pressed="false" data-v="pit">The Pit</button>
-            <button type="button" aria-pressed="false" data-v="crate">Tag crates</button>
-            <button type="button" aria-pressed="false" data-v="shop">Tag Shop</button>
-            <button type="button" aria-pressed="false" data-v="earned">Earned</button>
-            <button type="button" aria-pressed="false" data-v="other">Other</button>
+        <div class="codex-seg codex-tag-groups" id="codex-tag-filter" role="group" aria-label="How it's earned">
+          <button type="button" aria-pressed="true" data-v="event">Events</button>
+          <button type="button" aria-pressed="false" data-v="pit">The Pit</button>
+          <button type="button" aria-pressed="false" data-v="crate">Tag crates</button>
+          <button type="button" aria-pressed="false" data-v="shop">Tag Shop</button>
+          <button type="button" aria-pressed="false" data-v="earned">Earned</button>
+          <button type="button" aria-pressed="false" data-v="other">Other</button>
+        </div>
+        <div class="codex-crate-layout">
+          <nav class="card codex-crate-nav codex-tag-nav" id="codex-tag-nav" aria-label="Tag categories"></nav>
+          <div class="codex-crate-main">
+            <div class="codex-chat" aria-live="polite">
+              <div class="codex-chat-head"><span>Chat preview</span>
+                <div class="codex-chat-opts">
+                  <button type="button" id="codex-chat-prestige" class="ui-select" aria-haspopup="listbox" aria-expanded="false" aria-label="Prestige" data-onpick="codexSetChat|prestige"><span class="ui-select-text"></span><svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                  <button type="button" id="codex-chat-rank" class="ui-select" aria-haspopup="listbox" aria-expanded="false" aria-label="Rank" data-onpick="codexSetChat|rank"><span class="ui-select-text"></span><svg class="ui-select-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                  <label for="codex-chat-name">Name <input id="codex-chat-name" value="Steve" maxlength="16" autocomplete="off" spellcheck="false" /></label>
+                </div>
+              </div>
+              <div class="codex-chat-line is-old" id="codex-chat-old"></div>
+              <div class="codex-chat-line" id="codex-chat-line"></div>
+            </div>
+            <div id="codex-tag-out"></div>
           </div>
-          <label class="codex-search"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-            <input id="codex-tag-q" type="search" placeholder="Find a tag, e.g. Pit Boss" autocomplete="off" aria-label="Find a tag" />
-          </label>
         </div>
-        <div class="codex-chat" aria-live="polite">
-          <div class="codex-chat-head"><span>Chat preview</span><label for="codex-chat-name">Name <input id="codex-chat-name" value="Steve" maxlength="16" autocomplete="off" spellcheck="false" /></label></div>
-          <div class="codex-chat-line is-old"><span style="color:#aaaaaa;text-shadow:2px 2px 0 #2a2a2a">[Chemist]</span> Alex: anyone selling wheatium?</div>
-          <div class="codex-chat-line" id="codex-chat-line"></div>
-        </div>
-        <div id="codex-tag-out"></div>
       </div>
     </div>
 
@@ -769,7 +777,7 @@
   <script src="/static/ranks.js?v=2"></script>
   <script src="/static/combobox.js?v=3"></script>
   <script src="/static/dropdown.js?v=46"></script>
-  <script src="/static/codex.js?v=1"></script>
-  <script src="/static/app.js?v=71"></script>
+  <script src="/static/codex.js?v=3"></script>
+  <script src="/static/app.js?v=72"></script>
 </body>
 </html>
