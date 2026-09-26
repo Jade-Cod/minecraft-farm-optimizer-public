@@ -1,7 +1,7 @@
 // Searchable compound combobox — replaces the native <select> for picking a
 // crop/compound. Shows icon + name + price + delta, type-to-filter, optional
 // category grouping, full keyboard nav. Vanilla, no dependencies.
-// Exposes window.createCompoundCombobox(opts) -> { getValue, setValue, focus }.
+// Exposes window.createCompoundCombobox(opts) -> { getValue, setValue, setItems, focus }.
 (function () {
   'use strict';
 
@@ -43,9 +43,9 @@
   window.createCompoundCombobox = function (opts) {
     const mount = typeof opts.mount === 'string'
       ? document.querySelector(opts.mount) : opts.mount;
-    if (!mount) return { getValue: () => '', setValue() {}, focus() {} };
+    if (!mount) return { getValue: () => '', setValue() {}, setItems() {}, focus() {} };
 
-    const items = opts.items || [];
+    let items = opts.items || [];
     const grouped = !!opts.grouped;
     const placeholder = opts.placeholder || 'Search…';
     const onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function () {};
@@ -214,6 +214,8 @@
     return {
       getValue: () => selectedId,
       setValue: (id) => { selectedId = id || ''; setFieldDisplay(selectedId); },
+      // Swap the option list; clears the selection (callers set a new value).
+      setItems: (next) => { closeList(false); items = next || []; selectedId = ''; setFieldDisplay(''); },
       focus: () => input.focus(),
     };
   };

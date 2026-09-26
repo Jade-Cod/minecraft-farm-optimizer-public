@@ -107,14 +107,6 @@ header {
   margin-left: auto;
   flex-shrink: 0;
 }
-.sync-status {
-  font-size: 12px;
-  color: var(--muted);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 @media (max-width: 700px) {
   /* Compact phone header: logo + actions share the first row, the nav strip
      takes the full second row. Roughly half the height of the stacked layout. */
@@ -123,8 +115,7 @@ header {
   .logo-img { width: 24px; height: 24px; }
   .header-actions { order: 1; gap: 8px; }
   .nav-tabs { order: 2; flex-basis: 100%; }
-  .auth-btn-long, #sync-label, .sync-status, .user-name { display: none; }
-  #sync-btn { padding: 7px 11px; }
+  .auth-btn-long, .user-name { display: none; }
 }
 
 /* ── Nav tabs ── */
@@ -293,13 +284,6 @@ main {
   .btn-secondary:hover { background: rgba(255,255,255,0.12); opacity: 1; }
 }
 
-/* Sync button: spin the icon while a price refresh is in flight. Linear +
-   fast (0.7s) so loading reads as quick (perceived-performance). */
-#sync-btn { display: inline-flex; align-items: center; gap: 6px; }
-.sync-icon { display: inline-block; line-height: 1; }
-.btn.syncing { opacity: 0.85; }
-.btn.syncing .sync-icon { animation: spin 0.7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Stats row ── */
 .stats-row {
@@ -2757,60 +2741,52 @@ body.drawer-open { overflow: hidden; }
 }
 
 /* ── Ranks page ── */
-.ranks-input-card { padding: 20px; }
-.ranks-input-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 24px;
+/* Blocks below set display:flex/grid, which would beat the hidden attribute. */
+#page-ranks [hidden] { display: none !important; }
+.ranks-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
+/* Chem / Cop path switch. */
+.ranks-track-toggle { display: inline-flex; gap: 3px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.ranks-track-toggle button {
+  background: none; border: none; color: var(--muted);
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  padding: 7px 18px; border-radius: 7px; cursor: pointer; min-height: 36px;
+  transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out);
 }
-.ranks-input-col { display: flex; flex-direction: column; min-width: 0; }
-.ranks-col-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
+.ranks-track-toggle button[aria-pressed="true"] { background: rgba(255,255,255,0.1); color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  .ranks-track-toggle button:hover:not([aria-pressed="true"]) { color: rgba(255,255,255,0.75); }
 }
-.ranks-col-opt { font-weight: 500; color: var(--muted); }
-.ranks-field-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted);
-  margin: 10px 0 5px;
-}
-.ranks-field-label:first-of-type { margin-top: 0; }
-.ranks-input-card .cbx { display: block; width: 100%; min-width: 0; }
 
-.ranks-balance-wrap {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+/* Inputs + answer on the left, what you get on the right; one column on narrow screens. */
+.ranks-layout { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 16px; align-items: start; }
+.ranks-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.ranks-input-card { padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.ranks-pick { display: grid; grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1.25fr); gap: 8px; align-items: center; }
+.ranks-pick-money { grid-template-columns: 56px minmax(0, 1fr); padding-top: 10px; border-top: 1px solid var(--border); }
+.ranks-pick-label { font-size: 13px; font-weight: 700; color: var(--text); }
+.ranks-input-card .cbx { display: block; width: 100%; min-width: 0; }
+/* Rank lists have no icons or prices, and the half-width fields are narrow on
+   phones: drop the empty columns and let the list grow wider than its field,
+   opening toward the middle of the card so it stays on screen. */
+.ranks-input-card .cbx-opt-icon, .ranks-input-card .cbx-opt-price:empty { display: none; }
+.ranks-input-card .cbx-list { min-width: 180px; }
+.ranks-pick .ranks-combo:last-child .cbx-list { left: auto; }
+.ranks-balance-input {
+  width: 100%; min-width: 0;
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0 12px;
-  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
-}
-.ranks-balance-wrap:focus-within {
-  border-color: rgba(84,172,210,0.6);
-  box-shadow: 0 0 0 3px rgba(84,172,210,0.12);
-}
-.ranks-balance-prefix { color: var(--muted); font-family: var(--font-mono); font-size: 14px; }
-.ranks-balance-input {
-  flex: 1;
-  min-width: 0;
-  background: none;
-  border: none;
-  outline: none;
   color: var(--text);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
-  padding: 11px 0;
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
-.ranks-balance-input::placeholder { color: var(--muted); }
+.ranks-balance-input::placeholder { color: var(--muted); font-family: var(--font-body); }
+.ranks-balance-input:focus { border-color: rgba(84,172,210,0.6); box-shadow: 0 0 0 3px rgba(84,172,210,0.12); }
 
 .ranks-msg {
   background: rgba(227,179,65,0.10);
@@ -2822,101 +2798,73 @@ body.drawer-open { overflow: hidden; }
   font-weight: 500;
 }
 
-/* The headline figure leads — accent it and bump the scale. */
-#ranks-kpis .stat-value { font-size: 22px; }
-#ranks-kpi-needed { color: var(--blue); }
-
-.ranks-progress-card { padding: 18px 20px; }
-.ranks-progress-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 10px;
+/* The answer: one big number. */
+.ranks-answer-card { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.ranks-cost {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: clamp(30px, 7vw, 40px); font-weight: 600; line-height: 1.1; color: var(--blue);
 }
-.ranks-progress-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-.ranks-progress-pct { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; color: var(--text); }
-.ranks-progress {
-  height: 12px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 999px;
-  overflow: hidden;
-}
+.ranks-cost-sub { font-size: 14px; color: rgba(255,255,255,0.75); margin-top: -4px; }
+.ranks-left { display: flex; flex-direction: column; gap: 8px; }
+.ranks-left-line { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: rgba(255,255,255,0.75); }
+.ranks-left-line b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text); }
+.ranks-progress { height: 8px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
 .ranks-progress-fill {
-  height: 100%;
-  width: 100%;
-  transform: scaleX(0);
-  transform-origin: left center;
+  height: 100%; width: 100%;
+  transform: scaleX(0); transform-origin: left center;
   background: linear-gradient(90deg, var(--accent), var(--blue));
+  border-radius: inherit;
   transition: transform 0.32s var(--ease-out);
 }
+.ranks-heads-up { font-size: 13px; color: var(--yellow); }
 
-.ranks-rewards-card { padding: 18px 20px; }
-.ranks-rewards-rank {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--blue);
+/* What you get. */
+.ranks-gains-card { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.ranks-gains-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+.ranks-gains { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ranks-gains:empty { display: none; }
+.ranks-gain {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
 }
-.ranks-rewards-note { font-size: 13px; line-height: 1.5; color: var(--muted); }
+.ranks-gain b { font-family: var(--font-mono); font-size: 17px; font-weight: 600; color: var(--blue); flex-shrink: 0; }
+.ranks-gain span { font-size: 13px; color: rgba(255,255,255,0.8); }
+.ranks-unlocks { display: flex; flex-wrap: wrap; gap: 6px; }
+.ranks-unlocks:empty { display: none; }
+.ranks-unlock { font-size: 13px; font-weight: 600; color: var(--yellow); background: rgba(227,179,65,0.12); padding: 5px 10px; border-radius: 8px; }
+.ranks-also { font-size: 13px; line-height: 1.55; color: rgba(255,255,255,0.75); }
+.ranks-also b { color: var(--muted); font-weight: 600; }
+.ranks-none { font-size: 13px; color: var(--muted); }
 
-/* Cumulative path: a per-tier timeline of every rankup to the goal. */
-.ranks-path { display: flex; flex-direction: column; gap: 20px; }
-.ranks-path-group { display: flex; flex-direction: column; }
-.ranks-path-group-head {
-  display: flex; justify-content: space-between; align-items: baseline;
-  padding-bottom: 8px; margin-bottom: 6px;
-  border-bottom: 1px solid var(--border);
+/* Every rankup, collapsed by default. */
+.ranks-steps-wrap { border-top: 1px solid var(--border); padding-top: 12px; }
+.ranks-steps-wrap summary {
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; list-style: none; border-radius: 6px;
+  font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8);
 }
-.ranks-path-tier { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; }
-.ranks-path-tier-sum { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; color: var(--text); }
-.ranks-path-note { font-size: 12px; color: var(--muted); padding: 6px 0 2px; }
+.ranks-steps-wrap summary::-webkit-details-marker { display: none; }
+.ranks-steps-wrap summary::after { content: 'Show'; color: var(--blue); font-weight: 500; }
+.ranks-steps-wrap[open] summary::after { content: 'Hide'; }
+.ranks-steps-wrap summary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ranks-steps { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; }
+.ranks-step-tier { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); padding: 12px 0 4px; }
+.ranks-step-tier:first-child { padding-top: 0; }
+.ranks-step { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+.ranks-step-rank { font-weight: 600; font-size: 14px; }
+.ranks-step.is-goal .ranks-step-rank { color: var(--blue); }
+.ranks-step.is-up .ranks-step-rank { color: var(--green); }
+.ranks-step-cost { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13px; color: rgba(255,255,255,0.75); text-align: right; }
+.ranks-step-perks { grid-column: 1 / -1; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
 
-.ranks-path-steps { list-style: none; margin: 0; padding: 0; }
-.ranks-path-step {
-  position: relative;
-  display: grid;
-  grid-template-columns: 16px 1fr;
-  gap: 12px;
-  padding: 9px 0;
-  opacity: 0;
-  transform: translateY(8px);
-  animation: ranksStepIn 300ms var(--ease-out) forwards;
-  animation-delay: var(--d, 0ms);
+@media (max-width: 900px) {
+  .ranks-layout { grid-template-columns: 1fr; }
 }
-/* Continuous connector line running through the dot column. */
-.ranks-path-step::before {
-  content: '';
-  position: absolute;
-  left: 7px; top: 0; bottom: 0;
-  width: 2px;
-  background: var(--border);
-}
-.ranks-path-step:first-child::before { top: 9px; }
-.ranks-path-step.is-last::before { bottom: auto; height: 9px; }
-.ranks-path-dot {
-  position: relative; z-index: 1;
-  width: 10px; height: 10px; margin-top: 4px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 2px solid var(--border);
-  transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
-}
-.ranks-path-step.is-target .ranks-path-dot {
-  background: var(--accent);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(41,105,176,0.18);
-}
-.ranks-path-body { min-width: 0; }
-.ranks-path-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.ranks-path-rank { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--text); }
-.ranks-path-step.is-target .ranks-path-rank { color: var(--blue); }
-.ranks-path-cost { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); flex-shrink: 0; }
-.ranks-path-perk { font-size: 13px; line-height: 1.5; color: var(--muted); margin-top: 3px; }
-
-@keyframes ranksStepIn { to { opacity: 1; transform: none; } }
-
-@media (max-width: 760px) {
-  .ranks-input-grid { grid-template-columns: 1fr; gap: 20px; }
+@media (max-width: 420px) {
+  .ranks-pick { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ranks-pick-label { grid-column: 1 / -1; }
+  .ranks-pick-money { grid-template-columns: 1fr; }
 }
 
 /* ── Respect reduced-motion preference ── */

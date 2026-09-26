@@ -19,6 +19,12 @@ services:
       SECURE_COOKIES: ${SECURE_COOKIES:-true}
     volumes:
       - mclabs-data:/app/backend/data
+    # Cap container logs (Docker keeps them forever by default): 3 x 10 MB each.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - web
 
@@ -37,6 +43,12 @@ services:
       - caddy-logs:/var/log/caddy
     depends_on:
       - mclabs-tools
+    # Cap container logs (Docker keeps them forever by default): 3 x 10 MB each.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - web
 

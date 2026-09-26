@@ -1,8 +1,6 @@
 import os
 import re
 import json
-import csv
-import io
 import time
 import asyncio
 import sqlite3
@@ -29,6 +27,7 @@ from jose import jwt, JWTError
 from deps import get_current_user, require_user, JWT_SECRET, JWT_ALGORITHM
 import auth as auth_module
 import status as status_module
+import sheet_sync
 import analytics as analytics_module
 
 _docs_enabled = os.environ.get("ENABLE_DOCS", "0") in ("1", "true", "True")
@@ -114,7 +113,6 @@ app.include_router(auth_module.router, prefix="/auth")
 
 DATA_FILE = Path(__file__).parent / "data" / "crops.json"
 DB_FILE   = Path(__file__).parent / "data" / "history.db"
-SHEET_ID  = "1cOKyTKjOaAdyBKyJy9654gPjT6aYkme-EMEfRZWazew"
 
 # Purity multipliers: index = level (0-3)
 PURITY_MULTIPLIERS = [1.00, 1.15, 1.30, 1.50]
@@ -248,9 +246,10 @@ async def startup():
     try:
         seed_history_from_crops()
     except FileNotFoundError:
-        pass  # crops.json absent on fresh install; will populate after first /api/sync
+        pass  # crops.json absent on fresh install
     asyncio.create_task(vote_notify_loop())
     asyncio.create_task(status_module.status_check_loop(get_db))
+    asyncio.create_task(sheet_sync.sync_loop(apply_sheet))
 
 
 # ── Crops helpers ─────────────────────────────────────────────────────────────
@@ -810,40 +809,20 @@ async def vote_notify_loop():
         await asyncio.sleep(60)
 
 
-@app.post("/api/sync")
-@limiter.limit("2/minute")
-async def sync_prices(request: Request, user: dict = Depends(require_user)):
-    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-            resp = await client.get(url)
-        resp.raise_for_status()
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch spreadsheet: {e}")
+def apply_sheet(rows: list[list[str]]) -> int:
+    """Apply the price sheet's newest column; returns how many prices changed.
 
-    reader = csv.reader(io.StringIO(resp.text))
-    rows = list(reader)
+    Called by sheet_sync's background loop. Writes nothing when nothing changed.
+    """
     crops = load_crops()
-    name_map = {c["name"].lower(): c for c in crops}
-    updated = 0
-    today = date.today().isoformat()
-
-    for row in rows:
-        if len(row) < 2:
-            continue
-        name = row[0].strip().lower()
-        if name not in name_map:
-            continue
-        try:
-            new_price = float(row[1].replace("$", "").replace(",", "").strip())
-            crop = name_map[name]
-            if abs((crop["current_price"] or 0) - new_price) > 0.001:
-                crop["previous_price"] = crop["current_price"]
-                crop["current_price"] = new_price
-                updated += 1
-                upsert_history(crop["id"], today, new_price)
-        except (ValueError, IndexError):
-            continue
+    updates = sheet_sync.price_updates(rows, crops)
+    if not updates:
+        return 0
+    record_date = sheet_sync.sheet_date(rows, date.today())
+    for crop, new_price in updates:
+        crop["previous_price"] = crop["current_price"]
+        crop["current_price"] = new_price
+        upsert_history(crop["id"], record_date, new_price)
 
     save_fields = {"id", "name", "minecraft_name", "emoji", "icon", "category",
                    "recipe_type", "recipe", "output_qty", "current_price",
@@ -853,8 +832,7 @@ async def sync_prices(request: Request, user: dict = Depends(require_user)):
     with open(tmp, "w") as f:
         json.dump(save_data, f, indent=2)
     os.replace(tmp, DATA_FILE)
-
-    return {"updated": updated, "synced_at": today}
+    return len(updates)
 
 
 # Note: behind Caddy all clients share one limiter identity (uvicorn runs

@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="/static/style.css?v=75" />
+  <link rel="stylesheet" href="/static/style.css?v=76" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -36,7 +36,6 @@
             </svg>
           </button>
         </div>
-        <a class="nav-tab" href="#ranks">Ranks</a>
         <a class="nav-tab" href="#graphs">Graphs</a>
         <a class="nav-tab" href="#status">Status</a>
         <a class="nav-tab" data-gated="true" href="#prestige">Prestige</a>
@@ -48,6 +47,7 @@
         <a class="nav-dropdown-item" href="#calculator">💰 Revenue Calculator</a>
         <a class="nav-dropdown-item" href="#sushi">🍣 Sushi</a>
         <a class="nav-dropdown-item" href="#lab">🧪 Lab Calculator</a>
+        <a class="nav-dropdown-item" href="#ranks">🏅 Rank Calculator</a>
       </div>
       <div class="header-actions">
         <div id="user-menu" class="user-menu hidden">
@@ -56,8 +56,6 @@
           <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
         <button id="auth-btn" class="auth-btn" onclick="window.location.href='/auth/discord/login'">Login<span class="auth-btn-long"> with Discord</span></button>
-        <span id="sync-status" class="sync-status"></span>
-        <button id="sync-btn" class="btn btn-secondary" onclick="syncPrices()" aria-label="Sync prices"><span class="sync-icon" id="sync-icon">&#8635;</span><span id="sync-label">Sync Prices</span></button>
       </div>
     </div>
   </header>
@@ -267,82 +265,67 @@
 
     <!-- ===== RANKS PAGE ===== -->
     <div id="page-ranks" class="page">
-      <div class="prestige-header">
-        <h2>&#127941; Rank Goal Calculator</h2>
-        <p class="prestige-intro">Pick where you are now and where you want to be. See exactly how much more money you need to get there, add your balance to track progress, and check what your target rank unlocks.</p>
+      <div class="ranks-header">
+        <div class="prestige-header">
+          <h2>&#127941; Rank Goal Calculator</h2>
+          <p class="prestige-intro">Pick where you are and where you want to be. See how much money it takes and what you'll get on the way.</p>
+        </div>
+        <div class="ranks-track-toggle" role="group" aria-label="Rank path">
+          <button type="button" data-track="chem" aria-pressed="true">Chem</button>
+          <button type="button" data-track="cop" aria-pressed="false">Cop</button>
+        </div>
       </div>
 
-      <!-- Inputs: current / target position + balance -->
-      <section class="card card-overflow ranks-input-card">
-        <div class="ranks-input-grid">
-          <div class="ranks-input-col">
-            <span class="ranks-col-title">Current position</span>
-            <label class="ranks-field-label" for="ranks-cur-prestige-input">Prestige</label>
-            <div id="ranks-cur-prestige" class="ranks-combo"></div>
-            <label class="ranks-field-label" for="ranks-cur-rank-input">Chem rank</label>
-            <div id="ranks-cur-rank" class="ranks-combo"></div>
-          </div>
-          <div class="ranks-input-col">
-            <span class="ranks-col-title">Target rank</span>
-            <label class="ranks-field-label" for="ranks-tgt-prestige-input">Prestige</label>
-            <div id="ranks-tgt-prestige" class="ranks-combo"></div>
-            <label class="ranks-field-label" for="ranks-tgt-rank-input">Chem rank</label>
-            <div id="ranks-tgt-rank" class="ranks-combo"></div>
-          </div>
-          <div class="ranks-input-col">
-            <span class="ranks-col-title">Your balance <span class="ranks-col-opt">(optional)</span></span>
-            <label class="ranks-field-label" for="ranks-balance">Current money</label>
-            <div class="ranks-balance-wrap">
-              <span class="ranks-balance-prefix">$</span>
-              <input type="number" id="ranks-balance" class="ranks-balance-input" inputmode="numeric" min="0" step="any" placeholder="0" />
+      <div class="ranks-layout">
+        <div class="ranks-main">
+          <!-- Where you are, where you're going, money on hand -->
+          <section class="card card-overflow ranks-input-card">
+            <div class="ranks-pick">
+              <span class="ranks-pick-label">Now</span>
+              <div id="ranks-cur-prestige" class="ranks-combo"></div>
+              <div id="ranks-cur-rank" class="ranks-combo"></div>
             </div>
-          </div>
-        </div>
-      </section>
+            <div class="ranks-pick">
+              <span class="ranks-pick-label">Goal</span>
+              <div id="ranks-tgt-prestige" class="ranks-combo"></div>
+              <div id="ranks-tgt-rank" class="ranks-combo"></div>
+            </div>
+            <div class="ranks-pick ranks-pick-money">
+              <label class="ranks-pick-label" for="ranks-balance">I have</label>
+              <input type="text" id="ranks-balance" class="ranks-balance-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Optional, e.g. 750k or 2.5m" />
+            </div>
+          </section>
 
-      <!-- Friendly validation message (hidden unless target is behind current) -->
-      <div id="ranks-msg" class="ranks-msg" hidden></div>
+          <!-- Friendly validation message (hidden unless the goal is behind) -->
+          <div id="ranks-msg" class="ranks-msg" hidden></div>
 
-      <!-- Result KPIs -->
-      <div class="stats-row" id="ranks-kpis">
-        <div class="stat-card">
-          <div class="stat-label">Money Needed</div>
-          <div class="stat-value" id="ranks-kpi-needed">&#8212;</div>
-          <div class="stat-sub" id="ranks-kpi-needed-sub">to reach your target</div>
+          <!-- The answer: what it costs -->
+          <section class="card ranks-answer-card" id="ranks-answer" aria-live="polite">
+            <div class="ranks-cost" id="ranks-cost">&#8212;</div>
+            <p class="ranks-cost-sub" id="ranks-cost-sub"></p>
+            <div class="ranks-left" id="ranks-left" hidden>
+              <div class="ranks-progress" id="ranks-progress" role="progressbar" aria-label="Money saved toward goal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="ranks-progress-fill" id="ranks-progress-fill"></div>
+              </div>
+              <div class="ranks-left-line"><span id="ranks-have"></span><b id="ranks-to-go"></b></div>
+            </div>
+            <p class="ranks-heads-up" id="ranks-heads-up" hidden></p>
+          </section>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Remaining After Balance</div>
-          <div class="stat-value" id="ranks-kpi-remaining">&#8212;</div>
-          <div class="stat-sub" id="ranks-kpi-remaining-sub">still to earn</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Progress to Target</div>
-          <div class="stat-value" id="ranks-kpi-pct">&#8212;</div>
-          <div class="stat-sub" id="ranks-kpi-pct-sub">of the way there</div>
-        </div>
+
+        <!-- What you get on the way -->
+        <section class="card ranks-gains-card" id="ranks-gains-card">
+          <h3 class="ranks-gains-title">What you'll get</h3>
+          <div class="ranks-gains" id="ranks-gains"></div>
+          <div class="ranks-unlocks" id="ranks-unlocks"></div>
+          <p class="ranks-also" id="ranks-kits" hidden></p>
+          <p class="ranks-also" id="ranks-also" hidden></p>
+          <details class="ranks-steps-wrap">
+            <summary id="ranks-steps-summary">Every rankup</summary>
+            <ol class="ranks-steps" id="ranks-steps"></ol>
+          </details>
+        </section>
       </div>
-
-      <!-- Progress-to-target bar -->
-      <section class="card ranks-progress-card">
-        <div class="ranks-progress-head">
-          <span class="ranks-progress-label" id="ranks-progress-label">Progress</span>
-          <span class="ranks-progress-pct" id="ranks-progress-pct">&#8212;</span>
-        </div>
-        <div class="ranks-progress" id="ranks-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div class="ranks-progress-fill" id="ranks-progress-fill"></div>
-        </div>
-      </section>
-
-      <!-- Target rank rewards -->
-      <section class="card ranks-rewards-card">
-        <div class="card-header">
-          <h2>&#127873; Rewards Along the Way</h2>
-          <span class="ranks-rewards-rank" id="ranks-rewards-rank"></span>
-        </div>
-        <div id="ranks-rewards" class="ranks-rewards">
-          <div class="skel-grid"><span class="skel-block"></span><span class="skel-block"></span><span class="skel-block"></span></div>
-        </div>
-      </section>
     </div>
 
     <!-- ===== GRAPHS PAGE ===== -->
@@ -697,9 +680,9 @@
 
   </main>
 
-  <script src="/static/ranks.js?v=1"></script>
-  <script src="/static/combobox.js?v=2"></script>
+  <script src="/static/ranks.js?v=2"></script>
+  <script src="/static/combobox.js?v=3"></script>
   <script src="/static/dropdown.js?v=46"></script>
-  <script src="/static/app.js?v=69"></script>
+  <script src="/static/app.js?v=70"></script>
 </body>
 </html>
