@@ -3,7 +3,7 @@
 // Wrapped in an IIFE so its names can't collide with app.js; app.js calls
 // window.codexShow(page) from navigate().
 (() => {
-  const CODEX_DATA_VERSION = 2;  // bump with every regenerated codex.json
+  const CODEX_DATA_VERSION = 3;  // bump with every regenerated codex.json
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const iconUrl = (stem) => `/static/icons/${stem}.png`;

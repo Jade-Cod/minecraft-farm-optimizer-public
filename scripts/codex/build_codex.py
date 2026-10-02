@@ -467,8 +467,10 @@ def rank_text(places):
 
 
 EVENTS = [  # (section id, name, title pattern, board -> phrase)
-    ('investment', 'Investment Week', r'^Top .*Investors',
-     lambda b: 'investors overall' if b == 'Top Investors' else 'in ' + b[4:-10]),
+    # Carnage's leaderboard prizes join the Halloween section that parse_halloween starts
+    ('halloween', 'Halloween', r'^Carnage - ', lambda b: 'overall' if b.endswith('Overall') else 'in ' + b.split(' - ')[1]),
+    ('investment', 'Investment Week', r'^Top .*(Investors|Earners)$',
+     lambda b: 'investors overall' if b == 'Top Investors' else b[4:].replace('Investors', 'investors').replace('Earners', 'earners')),
     ('runner', 'Runner Week', r'^Weekly Top (Runners|Suppliers)', lambda b: b.replace('Weekly Top ', '').lower()),
     ('clarkour', 'Clarkour Weekend', r'^Clarkour Weekend$', lambda b: 'overall'),
     ('farming', 'Farming Weekend', r'^Top .*Farmers',
@@ -476,6 +478,10 @@ EVENTS = [  # (section id, name, title pattern, board -> phrase)
     ('pit', 'Pit Weekend', r'^(All|Depths|Abyss|Void) \| Overall$',
      lambda b: 'overall' if b.startswith('All') else 'in The ' + b.split(' |')[0]),
 ]
+
+
+# Places beyond the captured page of a board, which Jade confirmed: (tag, board) -> places
+MISSED_PLACES = {('[Murdered]', 'Carnage - Stage I'): range(1, 11)}
 
 
 def capture_started(path):
@@ -486,15 +492,19 @@ def capture_started(path):
 
 def parse_events(files, tags):
     """Leaderboard screens -> one section per event, tags with the places that win them."""
-    boards = {sid: {'status': '', 'set_to_win': False, 'ends': None, 'tags': {}, 'bonus': {},
-                    'unnamed': []} for sid, *_ in EVENTS}
-    for path in files:
+    fresh = lambda: {'status': '', 'set_to_win': False, 'ends': None, 'tags': {}, 'bonus': {},  # noqa: E731
+                     'unnamed': [], 'path': None}
+    boards = {sid: fresh() for sid, *_ in EVENTS}
+    # oldest capture first: a newer capture of an event (e.g. its final standings) replaces the older one
+    for path in sorted(files, key=lambda p: capture_started(p) or dt.datetime.min):
         started = capture_started(path)
         for title, slots in screens(path):
             base = re.sub(r'\s*\(\d+/\d+\)$', '', title)
             ev = next((e for e in EVENTS if re.search(e[2], base)), None)
             if not ev:
                 continue
+            if boards[ev[0]]['path'] != path:
+                boards[ev[0]] = {**fresh(), 'path': path}
             b = boards[ev[0]]
             board = base
             for _, it in gui_items(slots):
@@ -539,18 +549,53 @@ def parse_events(files, tags):
             if len(lower) == 1:
                 lower[0]['boards'][board].add(place)
                 lower[0]['holders'].setdefault(player, place)
+        for (text, board), places in MISSED_PLACES.items():
+            if board in b['tags'].get(text, {}).get('boards', {}):
+                b['tags'][text]['boards'][board].update(places)
         for t in b['tags'].values():
             t['holders'] = sorted(t['holders'], key=t['holders'].get)
         if not b['tags'] and not b['bonus']:
             continue
         live = ('concluded' not in b['status']) if b['status'] else b['set_to_win']
-        tags.section(sid, 'event', name, note='' if live else 'Ended', live=live, ends=b['ends'] if live else None)
+        if not any(s['id'] == sid for s in tags.sections):
+            tags.section(sid, 'event', name, note='' if live else 'Ended', live=live, ends=b['ends'] if live else None)
         for text, (runs, how) in b['bonus'].items():
             if text not in b['tags']:
                 tags.add(sid, runs, how=how)
         for t in b['tags'].values():
             how = ' · '.join(f'{rank_text(sorted(p))} {phrase(bd)}' for bd, p in t['boards'].items())
             tags.add(sid, t['runs'], how=how, holders=None if live else t['holders'])
+
+
+HALLOWEEN_COLOR = '#A10909'  # the Halloween Tags menu's title colour
+
+
+def parse_halloween(files, tags):
+    """Carnage's Halloween tags: a ladder that unlocks one tag at a time (daily goals and missions),
+    plus the Halloween Hunt's tag for each set of hidden objects found."""
+    ladder, hunt = {}, {}
+    for path in files:
+        for title, slots in screens(path):
+            if m := re.match(r'^Halloween Tags \[(\d+)/\d+\]$', title):
+                for slot, it in gui_items(slots):
+                    if it['id'].endswith('name_tag') and plain(it['name']).startswith('['):
+                        ladder.setdefault((int(m.group(1)), slot), it)
+            elif title == 'Carnage Hunt':
+                for _, it in gui_items(slots):
+                    found = re.match(r'^(?:✔\s*)?(.+?) \[\d+/(\d+)\]$', plain(it.get('name')).strip())
+                    for raw, line in zip(it.get('lore', []), lore_lines(it)):
+                        if found and TAG_BULLET.match(line):
+                            runs = bracket_runs(raw)
+                            hunt.setdefault(seg_text(runs), (runs, f'Halloween Hunt · {found[1]}: find all {found[2]}'))
+    if not ladder and not hunt:
+        return
+    tags.section('halloween', 'event', 'Halloween', live=True, color=HALLOWEEN_COLOR)
+    for n, key in enumerate(sorted(ladder), 1):
+        it = ladder[key]
+        pick = ' · pick your own gradient' if 'Pick your own gradient!' in lore_lines(it) else ''
+        tags.add('halloween', trim_runs(segs(it['name']), 'Tag'), how=f'Tag #{n} · daily Carnage goals and missions{pick}')
+    for runs, how in hunt.values():
+        tags.add('halloween', runs, how=how)
 
 
 def chat_lines(path):
@@ -934,6 +979,7 @@ def build(captures):
 
     tags = Tags()
     own = parse_own_tags(files)
+    parse_halloween(files, tags)
     parse_events(files, tags)
     tags.section('legacy', 'event', '2022 events', note='PvP tournaments and Fishing Week', live=False)
     for img, text, how, holders in LEGACY_TAGS:
@@ -973,6 +1019,9 @@ def build(captures):
 def self_check():
     assert rank_text([1, 2, 3]) == 'Top 3' and rank_text([1]) == '#1'
     assert rank_text([6, 7, 8, 9, 10]) == '#6–#10' and rank_text([2, 5]) == '#2, #5'
+    phrase = {sid: p for sid, _, _, p in EVENTS}
+    assert phrase['investment']('Top Dog Fights Earners') == 'Dog Fights earners'
+    assert phrase['halloween']('Carnage - Stage I') == 'in Stage I' and phrase['halloween']('Carnage - Overall') == 'overall'
     assert generic('[11154 Fish]') == '[## Fish]' and generic('[? Days]') == '[## Days]'
     split = [{'t': '[Re #', 'c': '#fff', 'b': False}, {'t': '6', 'c': '#f00', 'b': False}, {'t': ']', 'c': '#fff', 'b': False}]
     assert seg_text(numbers_hidden(split)) == '[Re ##]'
