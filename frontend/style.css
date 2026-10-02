@@ -3245,7 +3245,7 @@ body:not(.authenticated) .nav-tab[data-gated]::after {
 }
 @font-face {
   font-family: 'Minecraft Codex';
-  src: url('/static/fonts/minecraft.woff?v=4') format('woff');
+  src: url('/static/fonts/minecraft.woff?v=5') format('woff');
   font-display: swap;
 }
 .nav-item-icon { width: 16px; height: 16px; image-rendering: pixelated; vertical-align: -3px; margin-right: 4px; }
